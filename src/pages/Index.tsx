@@ -40,6 +40,14 @@ const Index = () => {
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [linkToEdit, setLinkToEdit] = useState<{
+    id: string;
+    title: string;
+    url: string;
+    description?: string;
+    platform: string;
+    category_id?: string;
+  } | null>(null);
 
   const fetchData = async () => {
     if (!user) return;
@@ -135,7 +143,7 @@ const Index = () => {
               Save, organize, and access your social media links in one beautiful place
             </p>
             <div className="flex flex-wrap gap-3">
-              <AddLinkDialog categories={categories} onLinkAdded={fetchData} />
+              <AddLinkDialog categories={categories} onLinkAdded={fetchData} onCategoriesChange={fetchData} />
               <CategoryManager categories={categories} onCategoriesChange={fetchData} />
             </div>
           </div>
@@ -214,6 +222,15 @@ const Index = () => {
           </div>
         )}
 
+        {/* Edit Link Dialog */}
+        <AddLinkDialog
+          categories={categories}
+          onLinkAdded={fetchData}
+          onCategoriesChange={fetchData}
+          linkToEdit={linkToEdit}
+          onEditComplete={() => setLinkToEdit(null)}
+        />
+
         {/* Links Grid */}
         {loading ? (
           <div className="text-center py-12 text-muted-foreground">Loading...</div>
@@ -229,7 +246,7 @@ const Index = () => {
                 : "Try adjusting your filters or search query"}
             </p>
             {links.length === 0 && (
-              <AddLinkDialog categories={categories} onLinkAdded={fetchData} />
+              <AddLinkDialog categories={categories} onLinkAdded={fetchData} onCategoriesChange={fetchData} />
             )}
             {links.length > 0 && (
               <Button
@@ -257,6 +274,7 @@ const Index = () => {
                 category={link.categories}
                 categories={categories}
                 onDelete={fetchData}
+                onEdit={setLinkToEdit}
               />
             ))}
           </div>

@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Trash2, Facebook, Instagram, Twitter, Linkedin, Youtube, Video, ImageIcon, Circle } from "lucide-react";
+import { ExternalLink, Trash2, Pencil, Facebook, Instagram, Twitter, Linkedin, Youtube, Video, ImageIcon, Circle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,6 +23,14 @@ interface LinkCardProps {
   };
   categories: Category[];
   onDelete: () => void;
+  onEdit?: (link: {
+    id: string;
+    title: string;
+    url: string;
+    description?: string;
+    platform: string;
+    category_id?: string;
+  }) => void;
 }
 
 const getPlatformIcon = (platform: string) => {
@@ -47,7 +55,7 @@ const getPlatformIcon = (platform: string) => {
   }
 };
 
-export const LinkCard = ({ id, title, url, description, platform, category, categories, onDelete }: LinkCardProps) => {
+export const LinkCard = ({ id, title, url, description, platform, category, categories, onDelete, onEdit }: LinkCardProps) => {
   const { toast } = useToast();
 
   const getCategoryDisplay = () => {
@@ -81,6 +89,20 @@ export const LinkCard = ({ id, title, url, description, platform, category, cate
     onDelete();
   };
 
+  const handleEdit = () => {
+    if (onEdit) {
+      const categoryId = categories.find(c => c.name === category?.name)?.id;
+      onEdit({
+        id,
+        title,
+        url,
+        description,
+        platform,
+        category_id: categoryId,
+      });
+    }
+  };
+
   return (
     <Card className="p-5 shadow-card hover:shadow-md transition-all duration-300 bg-gradient-card border-border/50 animate-fade-in group">
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -93,14 +115,26 @@ export const LinkCard = ({ id, title, url, description, platform, category, cate
             <p className="text-sm text-muted-foreground truncate">{platform}</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleDelete}
-          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleEdit}
+              className="hover:bg-primary/10 hover:text-primary"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDelete}
+            className="hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {description && (
