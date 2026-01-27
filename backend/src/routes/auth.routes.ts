@@ -1,9 +1,10 @@
-import express from 'express';
+import express, { type Request, type Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import type { StringValue } from 'ms';
 import { body, validationResult } from 'express-validator';
 import prisma from '../lib/prisma.js';
-import { authenticate } from '../middleware/auth.middleware.js';
+import { authenticate, type AuthRequest } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ router.post(
     body('password').isLength({ min: 6 }),
     body('fullName').optional().trim(),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -61,11 +62,12 @@ router.post(
       if (!JWT_SECRET) {
         throw new Error('JWT_SECRET is not defined');
       }
+      const expiresIn = (process.env.JWT_EXPIRES_IN ?? '7d') as StringValue;
 
       const token = jwt.sign(
         { userId: user.id, email: user.email },
         JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+        { expiresIn }
       );
 
       res.status(201).json({
@@ -86,7 +88,7 @@ router.post(
     body('email').isEmail().normalizeEmail(),
     body('password').notEmpty(),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -116,11 +118,12 @@ router.post(
       if (!JWT_SECRET) {
         throw new Error('JWT_SECRET is not defined');
       }
+      const expiresIn = (process.env.JWT_EXPIRES_IN ?? '7d') as StringValue;
 
       const token = jwt.sign(
         { userId: user.id, email: user.email },
         JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+        { expiresIn }
       );
 
       res.json({
@@ -139,7 +142,7 @@ router.post(
 );
 
 // Get current user
-router.get('/me', authenticate, async (req, res) => {
+router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
 

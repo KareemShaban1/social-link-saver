@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import prisma from '../lib/prisma.js';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware.js';
@@ -9,7 +9,7 @@ const router = express.Router();
 router.use(authenticate);
 
 // Get user profile
-router.get('/profile', async (req: AuthRequest, res) => {
+router.get('/profile', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
 
@@ -54,7 +54,7 @@ router.put(
     body('fullName').optional().trim(),
     body('avatarUrl').optional().isURL(),
   ],
-  async (req: AuthRequest, res) => {
+  async (req: AuthRequest, res: Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {

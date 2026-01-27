@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import prisma from '../lib/prisma.js';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware.js';
@@ -9,7 +9,7 @@ const router = express.Router();
 router.use(authenticate);
 
 // Get all links for user
-router.get('/', async (req: AuthRequest, res) => {
+router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
     const { categoryId, platform, search } = req.query;
@@ -59,7 +59,7 @@ router.get('/', async (req: AuthRequest, res) => {
 });
 
 // Get single link
-router.get('/:id', async (req: AuthRequest, res) => {
+router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
     const { id } = req.params;
@@ -101,7 +101,7 @@ router.post(
     body('platform').notEmpty().trim(),
     body('categoryId').optional().isUUID(),
   ],
-  async (req: AuthRequest, res) => {
+  async (req: AuthRequest, res: Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -163,7 +163,7 @@ router.put(
     body('platform').optional().notEmpty().trim(),
     body('categoryId').optional().isUUID(),
   ],
-  async (req: AuthRequest, res) => {
+  async (req: AuthRequest, res: Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -229,7 +229,7 @@ router.put(
 );
 
 // Delete link
-router.delete('/:id', async (req: AuthRequest, res) => {
+router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
     const { id } = req.params;

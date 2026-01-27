@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import prisma from '../lib/prisma.js';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware.js';
@@ -9,7 +9,7 @@ const router = express.Router();
 router.use(authenticate);
 
 // Get all categories for user
-router.get('/', async (req: AuthRequest, res) => {
+router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
 
@@ -50,7 +50,7 @@ router.get('/', async (req: AuthRequest, res) => {
 });
 
 // Get single category
-router.get('/:id', async (req: AuthRequest, res) => {
+router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
     const { id } = req.params;
@@ -90,7 +90,7 @@ router.post(
     body('color').optional().isHexColor(),
     body('parentId').optional().isUUID(),
   ],
-  async (req: AuthRequest, res) => {
+  async (req: AuthRequest, res: Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -148,7 +148,7 @@ router.put(
     body('color').optional().isHexColor(),
     body('parentId').optional().isUUID(),
   ],
-  async (req: AuthRequest, res) => {
+  async (req: AuthRequest, res: Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -247,7 +247,7 @@ router.put(
 );
 
 // Delete category
-router.delete('/:id', async (req: AuthRequest, res) => {
+router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
     const { id } = req.params;
