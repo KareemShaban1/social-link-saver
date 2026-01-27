@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ const Signup = () => {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -39,38 +41,30 @@ const Signup = () => {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-        },
-      },
-    });
+    try {
+      await api.register(email, password, fullName);
+      await refreshUser();
+      
+      toast({
+        title: "Success",
+        description: "Account created successfully!",
+      });
 
-    setLoading(false);
-
-    if (error) {
+      navigate("/");
+    } catch (error: any) {
       toast({
         title: "Signup failed",
-        description: error.message,
+        description: error.message || "Failed to create account",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    toast({
-      title: "Success",
-      description: "Account created! Please check your email to verify your account.",
-    });
-
-    navigate("/login");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[radial-gradient(1200px_circle_at_20%_10%,hsl(var(--primary)/0.18),transparent_50%),radial-gradient(900px_circle_at_80%_20%,hsl(var(--accent)/0.18),transparent_45%),linear-gradient(to_bottom,hsl(var(--background)),hsl(var(--muted)))]">
+      <Card className="w-full max-w-md shadow-lg border-border/60">
         <CardHeader className="space-y-1 text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Bookmark className="h-8 w-8 text-primary" />
@@ -136,6 +130,9 @@ const Signup = () => {
 };
 
 export default Signup;
+
+
+
 
 
 

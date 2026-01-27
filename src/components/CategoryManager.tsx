@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Settings, Plus, Pencil, Trash2, Palette, Network } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -78,31 +78,29 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 
 		setLoading(true);
 
-		const { error } = await supabase.from("categories").insert({
-			name: newName.trim(),
-			color: newColor,
-			parent_id: parentId,
-			user_id: user.id,
-		});
+		try {
+			await api.createCategory({
+				name: newName.trim(),
+				color: newColor,
+				parentId: parentId || undefined,
+			});
 
-		setLoading(false);
+			toast({
+				title: "Success",
+				description: "Category created successfully",
+			});
 
-		if (error) {
+			resetForm();
+			onCategoriesChange();
+		} catch (error: any) {
 			toast({
 				title: "Error",
-				description: "Failed to create category",
+				description: error.message || "Failed to create category",
 				variant: "destructive",
 			});
-			return;
+		} finally {
+			setLoading(false);
 		}
-
-		toast({
-			title: "Success",
-			description: "Category created successfully",
-		});
-
-		resetForm();
-		onCategoriesChange();
 	};
 
 	const handleEdit = async () => {
@@ -117,33 +115,29 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 
 		setLoading(true);
 
-		const { error } = await supabase
-			.from("categories")
-			.update({
+		try {
+			await api.updateCategory(editingCategory.id, {
 				name: newName.trim(),
 				color: newColor,
-				parent_id: parentId,
-			})
-			.eq("id", editingCategory.id);
+				parentId: parentId || undefined,
+			});
 
-		setLoading(false);
+			toast({
+				title: "Success",
+				description: "Category updated successfully",
+			});
 
-		if (error) {
+			resetForm();
+			onCategoriesChange();
+		} catch (error: any) {
 			toast({
 				title: "Error",
-				description: "Failed to update category",
+				description: error.message || "Failed to update category",
 				variant: "destructive",
 			});
-			return;
+		} finally {
+			setLoading(false);
 		}
-
-		toast({
-			title: "Success",
-			description: "Category updated successfully",
-		});
-
-		resetForm();
-		onCategoriesChange();
 	};
 
 	const handleDelete = async () => {
@@ -151,29 +145,25 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 
 		setLoading(true);
 
-		const { error } = await supabase
-			.from("categories")
-			.delete()
-			.eq("id", deleteCategory.id);
+		try {
+			await api.deleteCategory(deleteCategory.id);
 
-		setLoading(false);
+			toast({
+				title: "Success",
+				description: "Category deleted successfully",
+			});
 
-		if (error) {
+			setDeleteCategory(null);
+			onCategoriesChange();
+		} catch (error: any) {
 			toast({
 				title: "Error",
-				description: "Failed to delete category",
+				description: error.message || "Failed to delete category",
 				variant: "destructive",
 			});
-			return;
+		} finally {
+			setLoading(false);
 		}
-
-		toast({
-			title: "Success",
-			description: "Category deleted successfully",
-		});
-
-		setDeleteCategory(null);
-		onCategoriesChange();
 	};
 
 	const startEdit = (category: Category) => {

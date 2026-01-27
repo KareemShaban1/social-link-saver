@@ -1,73 +1,196 @@
-# Welcome to your Lovable project
+# Social Link Saver
 
-## Project info
+A modern web application for saving, organizing, and managing social media links with a beautiful, intuitive interface.
 
-**URL**: https://lovable.dev/projects/16a558da-5660-4e43-876c-661130c3a032
+## 🏗️ Architecture
 
-## How can I edit this code?
+This project consists of two main parts:
 
-There are several ways of editing your application.
+### Frontend (React + Vite)
+- **Location**: Root directory
+- **Framework**: React 18 + TypeScript
+- **UI**: shadcn/ui + Tailwind CSS
+- **State**: React Context + Custom Hooks
 
-**Use Lovable**
+### Backend (Express.js + Prisma + MySQL)
+- **Location**: `backend/` directory
+- **Framework**: Express.js + TypeScript
+- **ORM**: Prisma
+- **Database**: MySQL
+- **Authentication**: JWT
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/16a558da-5660-4e43-876c-661130c3a032) and start prompting.
+## 🚀 Quick Start
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js 18+ and npm
+- MySQL 8.0+ (for backend)
+- Git
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Frontend Setup
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```bash
+# Install dependencies
+npm install
 
-Follow these steps:
+# Set up environment variables
+cp .env.example .env
+# Edit .env and set VITE_API_URL=http://localhost:3001/api
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Frontend runs on `http://localhost:5173`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Backend Setup
 
-**Use GitHub Codespaces**
+```bash
+# Navigate to backend
+cd backend
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Install dependencies
+npm install
 
-## What technologies are used for this project?
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your MySQL connection and JWT secret
 
-This project is built with:
+# Create MySQL database
+mysql -u root -p
+CREATE DATABASE social_link_saver;
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+# Run migrations
+npm run prisma:migrate
+npm run prisma:generate
 
-## How can I deploy this project?
+# Start backend server
+npm run dev
+```
 
-Simply open [Lovable](https://lovable.dev/projects/16a558da-5660-4e43-876c-661130c3a032) and click on Share -> Publish.
+Backend runs on `http://localhost:3001`
 
-## Can I connect a custom domain to my Lovable project?
+See [BACKEND_SETUP.md](./BACKEND_SETUP.md) for detailed backend setup instructions.
 
-Yes, you can!
+## 📚 Documentation
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- **[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)** - Complete project documentation
+- **[MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)** - Guide for migrating from Supabase
+- **[BACKEND_SETUP.md](./BACKEND_SETUP.md)** - Detailed backend setup guide
+- **[backend/README.md](./backend/README.md)** - Backend API documentation
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## 🛠️ Technologies
+
+### Frontend
+- **Vite** - Build tool and dev server
+- **TypeScript** - Type safety
+- **React 18** - UI library
+- **shadcn/ui** - Component library
+- **Tailwind CSS** - Styling
+- **React Router** - Routing
+- **React Hook Form** - Form management
+
+### Backend
+- **Express.js** - Web framework
+- **Prisma** - ORM
+- **MySQL** - Database
+- **JWT** - Authentication
+- **bcryptjs** - Password hashing
+- **express-validator** - Input validation
+
+## 📁 Project Structure
+
+```
+social-link-saver/
+├── backend/              # Express.js backend
+│   ├── prisma/          # Prisma schema and migrations
+│   ├── src/
+│   │   ├── routes/      # API routes
+│   │   ├── middleware/ # Express middleware
+│   │   └── server.ts    # Server entry point
+│   └── package.json
+├── src/                  # React frontend
+│   ├── components/      # React components
+│   ├── pages/           # Page components
+│   ├── lib/             # Utilities and API client
+│   └── contexts/        # React contexts
+└── package.json
+```
+
+## 🔑 Key Features
+
+- ✅ User authentication (JWT)
+- ✅ Link management (CRUD)
+- ✅ Category system with hierarchy
+- ✅ Platform detection and filtering
+- ✅ Video detection and inline playback
+- ✅ Link preview functionality
+- ✅ Search and filter capabilities
+- ✅ Responsive design
+
+## 🔐 Environment Variables
+
+### Frontend (.env)
+```env
+VITE_API_URL=http://localhost:3001/api
+```
+
+### Backend (backend/.env)
+```env
+DATABASE_URL=mysql://user:password@localhost:3306/social_link_saver
+JWT_SECRET=your-secret-key
+JWT_EXPIRES_IN=7d
+PORT=3001
+FRONTEND_URL=http://localhost:5173
+```
+
+## 📝 Available Scripts
+
+### Frontend
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+
+### Backend
+- `npm run dev` - Start development server (in backend/)
+- `npm run build` - Build for production
+- `npm run prisma:migrate` - Run database migrations
+- `npm run prisma:studio` - Open Prisma Studio
+
+## 🚢 Deployment
+
+### Frontend
+Deploy the built `dist/` folder to any static hosting:
+- Vercel
+- Netlify
+- AWS S3 + CloudFront
+- Any static file server
+
+### Backend
+Deploy to:
+- Railway
+- Render
+- AWS EC2
+- DigitalOcean
+- Heroku
+- Any Node.js hosting
+
+Ensure MySQL database is accessible from your hosting provider.
+
+## 🤝 Contributing
+
+This is a Lovable project. To contribute:
+
+1. Make changes via Lovable interface, or
+2. Clone repo and push changes
+3. Changes sync automatically
+
+## 📄 License
+
+This project is part of the Lovable platform.
+
+## 🔗 Links
+
+- [Lovable Project](https://lovable.dev/projects/16a558da-5660-4e43-876c-661130c3a032)
+- [Project Documentation](./PROJECT_DOCUMENTATION.md)
+- [Migration Guide](./MIGRATION_GUIDE.md)

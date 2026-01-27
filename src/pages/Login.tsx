@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -29,33 +31,30 @@ const Login = () => {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      await api.login(email, password);
+      await refreshUser();
+      
+      toast({
+        title: "Success",
+        description: "Logged in successfully",
+      });
 
-    setLoading(false);
-
-    if (error) {
+      navigate("/");
+    } catch (error: any) {
       toast({
         title: "Login failed",
-        description: error.message,
+        description: error.message || "Invalid credentials",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    toast({
-      title: "Success",
-      description: "Logged in successfully",
-    });
-
-    navigate("/");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[radial-gradient(1200px_circle_at_20%_10%,hsl(var(--primary)/0.18),transparent_50%),radial-gradient(900px_circle_at_80%_20%,hsl(var(--accent)/0.18),transparent_45%),linear-gradient(to_bottom,hsl(var(--background)),hsl(var(--muted)))]">
+      <Card className="w-full max-w-md shadow-lg border-border/60">
         <CardHeader className="space-y-1 text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Bookmark className="h-8 w-8 text-primary" />
@@ -106,6 +105,9 @@ const Login = () => {
 };
 
 export default Login;
+
+
+
 
 
 

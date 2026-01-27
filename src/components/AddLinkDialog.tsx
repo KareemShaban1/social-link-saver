@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2, Sparkles } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { extractUrlMetadata, detectPlatformFromUrl } from "@/lib/urlMetadata";
@@ -215,11 +215,7 @@ export const AddLinkDialog = ({ categories, onLinkAdded, onCategoriesChange, lin
           // Re-fetch categories from the updated list (we need to get fresh data)
           // Since categories prop might not be updated yet, we'll query directly
           if (user) {
-            const { data: freshCategories } = await supabase
-              .from("categories")
-              .select("*")
-              .eq("user_id", user.id)
-              .order("name");
+            const { categories: freshCategories } = await api.getCategories();
             
             const categoriesToUse = freshCategories || categories;
             const existingCategory = categoriesToUse.find(
@@ -307,34 +303,36 @@ export const AddLinkDialog = ({ categories, onLinkAdded, onCategoriesChange, lin
       }
     }
 
-    if (isEditMode && linkToEdit) {
-      // Update existing link
-      const { error } = await supabase
-        .from("links")
-        .update({
+    try {
+      if (isEditMode && linkToEdit) {
+        // Update existing link
+        await api.updateLink(linkToEdit.id, {
           title,
           url,
           description,
           platform,
-          category_id: finalCategoryId || null,
-        })
-        .eq("id", linkToEdit.id);
-
-      setLoading(false);
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to update link",
-          variant: "destructive",
+          categoryId: finalCategoryId || undefined,
         });
-        return;
-      }
 
-      toast({
-        title: "Success",
-        description: "Link updated successfully",
-      });
+        toast({
+          title: "Success",
+          description: "Link updated successfully",
+        });
+      } else {
+        // Create new link
+        await api.createLink({
+          title,
+          url,
+          description,
+          platform,
+          categoryId: finalCategoryId || undefined,
+        });
+
+        toast({
+          title: "Success",
+          description: "Link saved successfully",
+        });
+      }
 
       // Reset form
       setTitle("");
@@ -348,42 +346,14 @@ export const AddLinkDialog = ({ categories, onLinkAdded, onCategoriesChange, lin
         onEditComplete();
       }
       onLinkAdded();
-    } else {
-      // Create new link
-      const { error } = await supabase.from("links").insert({
-        title,
-        url,
-        description,
-        platform,
-        category_id: finalCategoryId || null,
-        user_id: user.id,
-      });
-
-      setLoading(false);
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to save link",
-          variant: "destructive",
-        });
-        return;
-      }
-
+    } catch (error: any) {
       toast({
-        title: "Success",
-        description: "Link saved successfully",
+        title: "Error",
+        description: error.message || (isEditMode ? "Failed to update link" : "Failed to save link"),
+        variant: "destructive",
       });
-
-      // Reset form
-      setTitle("");
-      setUrl("");
-      setDescription("");
-      setPlatform("");
-      setCategoryId("");
-      setCategoryName("");
-      setOpen(false);
-      onLinkAdded();
+    } finally {
+      setLoading(false);
     }
     
     // Refresh categories if callback provided

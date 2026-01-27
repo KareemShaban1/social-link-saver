@@ -1,0 +1,123 @@
+// Prisma schema for Social Link Saver
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid()) @db.Char(36)
+  email         String    @unique @db.VarChar(255)
+  password      String    @db.VarChar(255) // Hashed password
+  fullName      String?   @map("full_name") @db.VarChar(255)
+  avatarUrl     String?   @map("avatar_url") @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  categories    Category[]
+  links         Link[]
+  profile       UserProfile?
+  subscription  UserSubscription?
+
+  @@map("users")
+}
+
+model Category {
+  id        String    @id @default(uuid()) @db.Char(36)
+  name      String    @db.VarChar(255)
+  color     String    @default("#3b82f6") @db.VarChar(7)
+  parentId  String?   @map("parent_id") @db.Char(36)
+  userId    String    @map("user_id") @db.Char(36)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Category? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Category[] @relation("CategoryHierarchy")
+  links     Link[]
+
+  @@index([userId])
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Link {
+  id          String    @id @default(uuid()) @db.Char(36)
+  title       String    @db.VarChar(500)
+  url         String    @db.Text
+  description String?   @db.Text
+  platform    String    @db.VarChar(50)
+  categoryId  String?   @map("category_id") @db.Char(36)
+  userId      String    @map("user_id") @db.Char(36)
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([categoryId])
+  @@map("links")
+}
+
+model SubscriptionPlan {
+  id            String    @id @default(uuid()) @db.Char(36)
+  name          String    @db.VarChar(100)
+  description   String?   @db.Text
+  priceMonthly  Decimal   @map("price_monthly") @db.Decimal(10, 2)
+  priceYearly   Decimal?  @map("price_yearly") @db.Decimal(10, 2)
+  maxLinks      Int?      @map("max_links")
+  maxCategories Int?      @map("max_categories")
+  features      Json      @default("[]")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  subscriptions UserSubscription[]
+
+  @@map("subscription_plans")
+}
+
+model UserSubscription {
+  id                  String            @id @default(uuid()) @db.Char(36)
+  userId              String            @unique @map("user_id") @db.Char(36)
+  planId              String            @map("plan_id") @db.Char(36)
+  status              SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart  DateTime          @map("current_period_start")
+  currentPeriodEnd    DateTime          @map("current_period_end")
+  cancelAtPeriodEnd   Boolean           @default(false) @map("cancel_at_period_end")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                SubscriptionPlan  @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@map("user_subscriptions")
+}
+
+model UserProfile {
+  id        String   @id @default(uuid()) @db.Char(36)
+  userId    String   @unique @map("user_id") @db.Char(36)
+  fullName  String?  @map("full_name") @db.VarChar(255)
+  avatarUrl String?  @map("avatar_url") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
+
+  @@map("subscription_status")
+}

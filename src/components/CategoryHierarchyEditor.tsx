@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronDown, GripVertical, ArrowRight, ArrowLeft, Pencil, Trash2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 interface Category {
@@ -42,25 +42,23 @@ export const CategoryHierarchyEditor = ({
   };
 
   const convertToParent = async (category: Category) => {
-    const { error } = await supabase
-      .from("categories")
-      .update({ parent_id: null })
-      .eq("id", category.id);
+    try {
+      await api.updateCategory(category.id, {
+        parentId: undefined,
+      });
 
-    if (error) {
+      toast({
+        title: "Success",
+        description: `"${category.name}" is now a parent category`,
+      });
+      onUpdate();
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to convert to parent category",
+        description: error.message || "Failed to convert to parent category",
         variant: "destructive",
       });
-      return;
     }
-
-    toast({
-      title: "Success",
-      description: `"${category.name}" is now a parent category`,
-    });
-    onUpdate();
   };
 
   const convertToSubcategory = async (category: Category, newParentId: string) => {
@@ -75,202 +73,211 @@ export const CategoryHierarchyEditor = ({
       return;
     }
 
-    const { error } = await supabase
-      .from("categories")
-      .update({ parent_id: newParentId })
-      .eq("id", category.id);
+    try {
+      await api.updateCategory(category.id, {
+        parentId: newParentId,
+      });
 
-    if (error) {
+      toast({
+        title: "Success",
+        description: `"${category.name}" is now a subcategory`,
+      });
+      onUpdate();
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to convert to subcategory",
+        description: error.message || "Failed to convert to subcategory",
         variant: "destructive",
       });
-      return;
     }
-
-    toast({
-      title: "Success",
-      description: `"${category.name}" is now a subcategory`,
-    });
-    onUpdate();
   };
 
   const moveSubcategory = async (subcategory: Category, newParentId: string) => {
-    const { error } = await supabase
-      .from("categories")
-      .update({ parent_id: newParentId })
-      .eq("id", subcategory.id);
+    try {
+      await api.updateCategory(subcategory.id, {
+        parentId: newParentId,
+      });
 
-    if (error) {
+      const newParent = categories.find(c => c.id === newParentId);
+      toast({
+        title: "Success",
+        description: `"${subcategory.name}" moved to "${newParent?.name}"`,
+      });
+      onUpdate();
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to move subcategory",
+        description: error.message || "Failed to move subcategory",
         variant: "destructive",
       });
-      return;
     }
-
-    const newParent = categories.find(c => c.id === newParentId);
-    toast({
-      title: "Success",
-      description: `"${subcategory.name}" moved to "${newParent?.name}"`,
-    });
-    onUpdate();
   };
 
   return (
-    <div className="space-y-2">
+	  <div className="space-y-4">
       {parentCategories.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">
           No categories yet. Create your first category!
         </p>
       ) : (
-        <div className="space-y-1">
+				  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {parentCategories.map((parent) => {
             const subcategories = getSubcategories(parent.id);
             const isExpanded = expandedCategories.has(parent.id);
 
             return (
-              <div key={parent.id} className="space-y-1">
-                {/* Parent Category */}
-                <div className="group flex items-center gap-2 p-3 rounded-lg border bg-card hover:shadow-sm transition-all">
-                  <button
-                    onClick={() => toggleExpand(parent.id)}
-                    className="p-1 hover:bg-muted rounded transition-colors"
-                    disabled={subcategories.length === 0}
-                  >
-                    {subcategories.length > 0 ? (
-                      isExpanded ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )
-                    ) : (
-                      <div className="w-4 h-4" />
-                    )}
-                  </button>
-                  
-                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-                  
-                  <div
-                    className="w-6 h-6 rounded shrink-0"
-                    style={{ backgroundColor: parent.color }}
-                  />
-                  
-                  <span className="font-medium flex-1">{parent.name}</span>
-                  
-                  {subcategories.length > 0 && (
-                    <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded">
-                      {subcategories.length} {subcategories.length === 1 ? 'subcategory' : 'subcategories'}
-                    </span>
-                  )}
-                  
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onEdit(parent)}
-                      className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onDelete(parent)}
-                      className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+		  <div key={parent.id} className="flex flex-col h-full">
+			  {/* Parent Category Column */}
+			  <div className="flex flex-col border rounded-lg bg-card hover:shadow-md transition-all h-full">
+				  {/* Parent Category Header */}
+				  <div className="group flex flex-col gap-2 p-4 border-b">
+					  <div className="flex items-center gap-2">
+						  <button
+							  onClick={() => toggleExpand(parent.id)}
+							  className="p-1 hover:bg-muted rounded transition-colors shrink-0"
+							  disabled={subcategories.length === 0}
+						  >
+							  {subcategories.length > 0 ? (
+								  isExpanded ? (
+									  <ChevronDown className="h-4 w-4" />
+								  ) : (
+									  <ChevronRight className="h-4 w-4" />
+								  )
+							  ) : (
+								  <div className="w-4 h-4" />
+							  )}
+						  </button>
 
-                {/* Subcategories */}
-                {isExpanded && subcategories.length > 0 && (
-                  <div className="ml-8 space-y-1">
-                    {subcategories.map((subcat) => (
-                      <div
-                        key={subcat.id}
-                        className="group flex items-center gap-2 p-3 rounded-lg border bg-muted/30 hover:shadow-sm transition-all"
-                      >
-                        <div className="w-4 h-4" />
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                        
-                        <div
-                          className="w-5 h-5 rounded shrink-0"
-                          style={{ backgroundColor: subcat.color }}
-                        />
-                        
-                        <span className="text-sm font-medium flex-1">{subcat.name}</span>
-                        
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {/* Move to another parent */}
-                          {parentCategories.filter(p => p.id !== parent.id).length > 0 && (
-                            <div className="relative group/move">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-accent/10 hover:text-accent"
-                                title="Move to another parent"
-                              >
-                                <ArrowRight className="h-4 w-4" />
-                              </Button>
-                              <div className="absolute right-0 top-full mt-1 hidden group-hover/move:block z-50">
-                                <div className="bg-popover border rounded-lg shadow-lg p-2 min-w-[160px]">
-                                  <p className="text-xs text-muted-foreground mb-2 px-2">Move to:</p>
-                                  {parentCategories
-                                    .filter(p => p.id !== parent.id)
-                                    .map((targetParent) => (
-                                      <button
-                                        key={targetParent.id}
-                                        onClick={() => moveSubcategory(subcat, targetParent.id)}
-                                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded flex items-center gap-2"
-                                      >
-                                        <div
-                                          className="w-4 h-4 rounded shrink-0"
-                                          style={{ backgroundColor: targetParent.color }}
-                                        />
-                                        {targetParent.name}
-                                      </button>
-                                    ))}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Convert to parent */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => convertToParent(subcat)}
-                            className="h-8 w-8 hover:bg-accent/10 hover:text-accent"
-                            title="Convert to parent category"
-                          >
-                            <ArrowLeft className="h-4 w-4" />
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onEdit(subcat)}
-                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onDelete(subcat)}
-                            className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+						  <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+
+						  <div
+							  className="w-6 h-6 rounded shrink-0"
+							  style={{ backgroundColor: parent.color }}
+						  />
+
+						  <span className="font-medium flex-1 truncate">{parent.name}</span>
+
+						  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+							  <Button
+								  variant="ghost"
+								  size="icon"
+								  onClick={() => onEdit(parent)}
+								  className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+							  >
+								  <Pencil className="h-4 w-4" />
+							  </Button>
+							  <Button
+								  variant="ghost"
+								  size="icon"
+								  onClick={() => onDelete(parent)}
+								  className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+							  >
+								  <Trash2 className="h-4 w-4" />
+							  </Button>
+						  </div>
+					  </div>
+
+					  {subcategories.length > 0 && (
+						  <div className="flex items-center justify-between">
+							  <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded">
+								  {subcategories.length} {subcategories.length === 1 ? 'subcategory' : 'subcategories'}
+							  </span>
+						  </div>
+					  )}
+				  </div>
+
+				  {/* Subcategories List */}
+				  {isExpanded && subcategories.length > 0 && (
+					  <div className="flex-1 p-2 space-y-1 overflow-y-auto max-h-[400px]">
+						  {subcategories.map((subcat) => (
+							  <div
+								  key={subcat.id}
+				  className="group flex items-center gap-2 p-2 rounded-md border bg-muted/30 hover:shadow-sm transition-all"
+			  >
+				  <GripVertical className="h-3 w-3 text-muted-foreground shrink-0" />
+
+				  <div
+					  className="w-4 h-4 rounded shrink-0"
+					  style={{ backgroundColor: subcat.color }}
+				  />
+
+				  <span className="text-sm font-medium flex-1 truncate">{subcat.name}</span>
+
+				  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+					  {/* Move to another parent */}
+					  {parentCategories.filter(p => p.id !== parent.id).length > 0 && (
+						  <div className="relative group/move">
+							  <Button
+								  variant="ghost"
+								  size="icon"
+								  className="h-7 w-7 hover:bg-accent/10 hover:text-accent"
+								  title="Move to another parent"
+							  >
+								  <ArrowRight className="h-3 w-3" />
+							  </Button>
+							  <div className="absolute right-0 top-full mt-1 hidden group-hover/move:block z-50">
+								  <div className="bg-popover border rounded-lg shadow-lg p-2 min-w-[160px]">
+									  <p className="text-xs text-muted-foreground mb-2 px-2">Move to:</p>
+									  {parentCategories
+										  .filter(p => p.id !== parent.id)
+										  .map((targetParent) => (
+											  <button
+												  key={targetParent.id}
+												  onClick={() => moveSubcategory(subcat, targetParent.id)}
+												  className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded flex items-center gap-2"
+											  >
+												  <div
+													  className="w-4 h-4 rounded shrink-0"
+													  style={{ backgroundColor: targetParent.color }}
+												  />
+												  {targetParent.name}
+											  </button>
+										  ))}
+								  </div>
+							  </div>
+						  </div>
+					  )}
+
+					  {/* Convert to parent */}
+					  <Button
+						  variant="ghost"
+						  size="icon"
+						  onClick={() => convertToParent(subcat)}
+						  className="h-7 w-7 hover:bg-accent/10 hover:text-accent"
+						  title="Convert to parent category"
+					  >
+						  <ArrowLeft className="h-3 w-3" />
+					  </Button>
+
+					  <Button
+						  variant="ghost"
+						  size="icon"
+						  onClick={() => onEdit(subcat)}
+						  className="h-7 w-7 hover:bg-primary/10 hover:text-primary"
+					  >
+						  <Pencil className="h-3 w-3" />
+					  </Button>
+					  <Button
+						  variant="ghost"
+						  size="icon"
+						  onClick={() => onDelete(subcat)}
+						  className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
+					  >
+						  <Trash2 className="h-3 w-3" />
+					  </Button>
+				  </div>
+			  </div>
+		  ))}
+					  </div>
+				  )}
+
+				  {/* Empty state for column */}
+				  {!isExpanded && subcategories.length === 0 && (
+					  <div className="flex-1 p-4 text-center text-xs text-muted-foreground">
+						  No subcategories
+					  </div>
+				  )}
+			  </div>
               </div>
             );
           })}

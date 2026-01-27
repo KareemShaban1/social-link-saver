@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,12 +18,12 @@ interface UserProfile {
 interface Subscription {
   id: string;
   status: string;
-  subscription_plans: {
+  subscription_plans?: {
     name: string;
     description: string | null;
     price_monthly: number;
   };
-  current_period_end: string;
+  current_period_end?: string;
 }
 
 const Account = () => {
@@ -46,21 +46,23 @@ const Account = () => {
   const fetchProfile = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("user_profiles")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
+    try {
+      const { user: userData } = await api.getUserProfile();
+      const profileData: UserProfile | null = userData?.profile
+        ? {
+            full_name: userData.profile.fullName ?? null,
+            avatar_url: userData.profile.avatarUrl ?? null,
+          }
+        : null;
 
-    if (error && error.code !== "PGRST116") {
+      setProfile(profileData);
+      setFullName(profileData?.full_name || userData?.fullName || "");
+    } catch (error) {
       toast({
         title: "Error",
         description: "Failed to load profile",
         variant: "destructive",
       });
-    } else if (data) {
-      setProfile(data);
-      setFullName(data.full_name || "");
     }
     setProfileLoading(false);
   };
@@ -68,21 +70,30 @@ const Account = () => {
   const fetchSubscription = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("user_subscriptions")
-      .select(`
-        *,
-        subscription_plans (
-          name,
-          description,
-          price_monthly
-        )
-      `)
-      .eq("user_id", user.id)
-      .single();
+    try {
+      const { user: userData } = await api.getUserProfile();
+      // Backend returns subscription nested on user (or null)
+      const sub = userData?.subscription;
+      if (!sub) {
+        setSubscription(null);
+        return;
+      }
 
-    if (!error && data) {
-      setSubscription(data as any);
+      setSubscription({
+        id: sub.id,
+        status: sub.status,
+        current_period_end: sub.currentPeriodEnd,
+        subscription_plans: sub.plan
+          ? {
+              name: sub.plan.name,
+              description: sub.plan.description ?? null,
+              price_monthly: Number(sub.plan.priceMonthly ?? 0),
+            }
+          : undefined,
+      });
+    } catch {
+      // If subscription endpoint fails, keep UI usable
+      setSubscription(null);
     }
   };
 
@@ -91,30 +102,26 @@ const Account = () => {
 
     setLoading(true);
 
-    const { error } = await supabase
-      .from("user_profiles")
-      .upsert({
-        user_id: user.id,
-        full_name: fullName,
+    try {
+      await api.updateUserProfile({
+        fullName: fullName || undefined,
       });
 
-    setLoading(false);
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
 
-    if (error) {
+      fetchProfile();
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to update profile",
+        description: error.message || "Failed to update profile",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    toast({
-      title: "Success",
-      description: "Profile updated successfully",
-    });
-
-    fetchProfile();
   };
 
   const handleSignOut = async () => {
@@ -188,7 +195,7 @@ const Account = () => {
               <CardDescription>Manage your subscription plan</CardDescription>
             </CardHeader>
             <CardContent>
-              {subscription ? (
+              {subscription && subscription.subscription_plans ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
@@ -207,9 +214,11 @@ const Account = () => {
                     </div>
                   </div>
                   <Separator className="my-4" />
-                  <p className="text-sm text-muted-foreground">
-                    Current period ends: {new Date(subscription.current_period_end).toLocaleDateString()}
-                  </p>
+                  {subscription.current_period_end && (
+                    <p className="text-sm text-muted-foreground">
+                      Current period ends: {new Date(subscription.current_period_end).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <p className="text-muted-foreground">No active subscription</p>
@@ -237,6 +246,9 @@ const Account = () => {
 };
 
 export default Account;
+
+
+
 
 
 
