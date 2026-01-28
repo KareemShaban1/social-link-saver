@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Bookmark, User, Filter } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
+import { detectPlatformFromUrl } from "@/lib/urlMetadata";
 
 interface Link {
   id: string;
@@ -50,6 +51,14 @@ const Index = () => {
     description?: string;
     platform: string;
     category_id?: string;
+  } | null>(null);
+  const [createPrefill, setCreatePrefill] = useState<{
+    title?: string;
+    url?: string;
+    description?: string;
+    platform?: string;
+    categoryId?: string;
+    categoryName?: string;
   } | null>(null);
 
   const fetchData = async () => {
@@ -90,6 +99,36 @@ const Index = () => {
     if (user) {
       fetchData();
     }
+  }, [user]);
+
+  // Bookmarklet/share flow:
+  // Open "Add Link" dialog prefilled from query params like:
+  // ?add=1&url=...&title=...&description=...&platform=...
+  useEffect(() => {
+    if (!user) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const shouldAdd = params.get("add") === "1";
+    const urlParam = params.get("url") || "";
+    if (!shouldAdd || !urlParam) return;
+
+    const title = params.get("title") || undefined;
+    const description = params.get("description") || undefined;
+    const platform = params.get("platform") || detectPlatformFromUrl(urlParam);
+    const categoryId = params.get("categoryId") || undefined;
+    const categoryName = params.get("categoryName") || undefined;
+
+    setCreatePrefill({
+      url: urlParam,
+      title,
+      description,
+      platform,
+      categoryId,
+      categoryName,
+    });
+
+    // Remove query params to avoid re-opening on refresh
+    window.history.replaceState({}, "", window.location.pathname);
   }, [user]);
 
   // Get unique platforms from links
@@ -151,7 +190,13 @@ const Index = () => {
               Save, organize, and access your social media links in one beautiful place
             </p>
             <div className="flex flex-wrap gap-3">
-              <AddLinkDialog categories={categories} onLinkAdded={fetchData} onCategoriesChange={fetchData} />
+              <AddLinkDialog
+                categories={categories}
+                onLinkAdded={fetchData}
+                onCategoriesChange={fetchData}
+                createPrefill={createPrefill}
+                onCreatePrefillConsumed={() => setCreatePrefill(null)}
+              />
               <CategoryManager categories={categories} onCategoriesChange={fetchData} />
             </div>
 

@@ -33,6 +33,15 @@ interface AddLinkDialogProps {
   onCategoriesChange?: () => Promise<void> | void;
   linkToEdit?: LinkToEdit | null;
   onEditComplete?: () => void;
+  createPrefill?: {
+    title?: string;
+    url?: string;
+    description?: string;
+    platform?: string;
+    categoryId?: string;
+    categoryName?: string;
+  } | null;
+  onCreatePrefillConsumed?: () => void;
 }
 
 const PLATFORMS = [
@@ -47,7 +56,15 @@ const PLATFORMS = [
   "Other"
 ];
 
-export const AddLinkDialog = ({ categories, onLinkAdded, onCategoriesChange, linkToEdit, onEditComplete }: AddLinkDialogProps) => {
+export const AddLinkDialog = ({
+  categories,
+  onLinkAdded,
+  onCategoriesChange,
+  linkToEdit,
+  onEditComplete,
+  createPrefill,
+  onCreatePrefillConsumed,
+}: AddLinkDialogProps) => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -77,6 +94,26 @@ export const AddLinkDialog = ({ categories, onLinkAdded, onCategoriesChange, lin
     }
   }, [linkToEdit, open]);
 
+  // Load create-mode prefill (e.g. from bookmarklet / share flow)
+  useEffect(() => {
+    if (isEditMode) return;
+    if (!createPrefill) return;
+
+    setTitle(createPrefill.title ?? "");
+    setUrl(createPrefill.url ?? "");
+    setDescription(createPrefill.description ?? "");
+    setPlatform(
+      createPrefill.platform ??
+        (createPrefill.url ? detectPlatformFromUrl(createPrefill.url) : "")
+    );
+    setCategoryId(createPrefill.categoryId ?? "");
+    setCategoryName(createPrefill.categoryName ?? "");
+    setOpen(true);
+
+    // let parent clear URL params/state
+    onCreatePrefillConsumed?.();
+  }, [isEditMode, createPrefill, onCreatePrefillConsumed]);
+
   // Reset form when dialog closes
   useEffect(() => {
     if (!open) {
@@ -103,17 +140,30 @@ export const AddLinkDialog = ({ categories, onLinkAdded, onCategoriesChange, lin
     }
 
     // Category doesn't exist, create it
-    const { data: newCategory, error } = await supabase
-      .from("categories")
-      .insert({
+    try {
+      const { category: newCategory } = await api.createCategory({
         name: categoryName.trim(),
         color: getRandomColor(),
-        user_id: user.id,
-      })
-      .select()
-      .single();
+      });
 
-    if (error || !newCategory) {
+      if (!newCategory?.id) {
+        throw new Error("Category creation returned no id");
+      }
+
+      // Refresh categories if callback provided
+      if (onCategoriesChange) {
+        // Wait a bit for the database to update, then refresh
+        await new Promise(resolve => setTimeout(resolve, 200));
+        await onCategoriesChange();
+      }
+
+      toast({
+        title: "Category created",
+        description: `Created new category: ${categoryName.trim()}`,
+      });
+
+      return newCategory.id;
+    } catch (error: any) {
       console.error("Error creating category:", error);
       toast({
         title: "Error",
@@ -122,20 +172,6 @@ export const AddLinkDialog = ({ categories, onLinkAdded, onCategoriesChange, lin
       });
       return null;
     }
-
-    // Refresh categories if callback provided
-    if (onCategoriesChange) {
-      // Wait a bit for the database to update, then refresh
-      await new Promise(resolve => setTimeout(resolve, 200));
-      await onCategoriesChange();
-    }
-
-    toast({
-      title: "Category created",
-      description: `Created new category: ${categoryName.trim()}`,
-    });
-
-    return newCategory.id;
   };
 
   // Generate a random color for new categories
