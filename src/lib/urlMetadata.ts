@@ -42,16 +42,60 @@ export function detectPlatformFromUrl(url: string): string {
 }
 
 /**
- * Extracts metadata from a URL
- * Uses a CORS proxy to fetch the page and extract Open Graph and meta tags
+ * Extracts metadata from a URL using AI backend service
+ * Falls back to client-side extraction if backend is unavailable
  */
-export async function extractUrlMetadata(url: string): Promise<{
+export async function extractUrlMetadata(
+  url: string,
+  providedContent?: string
+): Promise<{
   title: string;
   description: string;
   platform: string;
 }> {
   const platform = detectPlatformFromUrl(url);
   
+  // Try backend AI service first
+  try {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    const response = await fetch(`${API_URL}/metadata/extract`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url, content: providedContent }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.title && data.description) {
+        return {
+          title: data.title,
+          description: data.description,
+          platform: data.platform || platform,
+        };
+      }
+    }
+  } catch (error) {
+    console.warn('Backend AI metadata extraction failed, falling back to client-side:', error);
+    // Continue to fallback method
+  }
+  
+  // Fallback: Try client-side extraction with CORS proxies
+  return extractUrlMetadataFallback(url, platform);
+}
+
+/**
+ * Fallback metadata extraction using CORS proxies
+ */
+async function extractUrlMetadataFallback(
+  url: string,
+  platform: string
+): Promise<{
+  title: string;
+  description: string;
+  platform: string;
+}> {
   // Try multiple CORS proxies in case one fails
   const proxies = [
     `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,

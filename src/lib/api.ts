@@ -147,6 +147,27 @@ class ApiClient {
     });
   }
 
+	// Metadata extraction endpoint - uses AI to generate title and description
+	async extractMetadata(url: string, content?: string) {
+		// This endpoint doesn't require authentication
+		const response = await fetch(`${this.baseUrl}/metadata/extract`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ url, content }),
+		});
+
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({
+				error: 'Failed to extract metadata',
+			}));
+			throw new Error(error.error || error.message || 'Request failed');
+		}
+
+		return response.json();
+	}
+
   // Category endpoints
   async getCategories() {
     const response = await this.request<{ categories: any[] }>('/categories');

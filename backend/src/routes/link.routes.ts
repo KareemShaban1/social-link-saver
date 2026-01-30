@@ -2,6 +2,7 @@ import express, { type Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import prisma from '../lib/prisma.js';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware.js';
+import { generateLinkMetadataWithAi } from '../lib/ai.js';
 
 const router = express.Router();
 
@@ -254,6 +255,38 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
     console.error('Delete link error:', error);
     res.status(500).json({ error: 'Failed to delete link' });
   }
+});
+
+// AI-powered metadata generation for a link/post
+router.post('/ai-metadata', async (req: AuthRequest, res: Response) => {
+	try {
+		const { url, platform, originalTitle, originalDescription } = req.body || {};
+
+		if (!url && !originalDescription) {
+			return res.status(400).json({
+				error: 'Either url or originalDescription is required for AI metadata generation',
+			});
+		}
+
+		const result = await generateLinkMetadataWithAi({
+			url,
+			platform,
+			originalTitle,
+			originalDescription,
+		});
+
+		if (!result) {
+			return res.status(503).json({
+				error:
+					'AI metadata service is unavailable. Ensure OPENAI_API_KEY is set on the backend server.',
+			});
+		}
+
+		res.json({ metadata: result });
+	} catch (error) {
+		console.error('AI metadata error:', error);
+		res.status(500).json({ error: 'Failed to generate AI metadata for link' });
+	}
 });
 
 export default router;

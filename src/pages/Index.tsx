@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Bookmark, User, Filter } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
-import { detectPlatformFromUrl } from "@/lib/urlMetadata";
+import { detectPlatformFromUrl, extractUrlMetadata } from "@/lib/urlMetadata";
 
 interface Link {
   id: string;
@@ -104,6 +104,8 @@ const Index = () => {
   // Bookmarklet/share flow:
   // Open "Add Link" dialog prefilled from query params like:
   // ?add=1&url=...&title=...&description=...&platform=...
+	// If title/description are missing or low-quality, we try to improve them
+	// using extractUrlMetadata (OG tags, meta description, etc.).
   useEffect(() => {
     if (!user) return;
 
@@ -112,23 +114,50 @@ const Index = () => {
     const urlParam = params.get("url") || "";
     if (!shouldAdd || !urlParam) return;
 
-    const title = params.get("title") || undefined;
-    const description = params.get("description") || undefined;
+	  const manualTitle = params.get("title") || undefined;
+	  const manualDescription = params.get("description") || undefined;
+	  const content = params.get("content") || undefined; // Raw content from bookmarklet
     const platform = params.get("platform") || detectPlatformFromUrl(urlParam);
     const categoryId = params.get("categoryId") || undefined;
     const categoryName = params.get("categoryName") || undefined;
 
-    setCreatePrefill({
-      url: urlParam,
-      title,
-      description,
-      platform,
-      categoryId,
-      categoryName,
-    });
+	  (async () => {
+		  let finalTitle = manualTitle;
+		  let finalDescription = manualDescription;
 
-    // Remove query params to avoid re-opening on refresh
-    window.history.replaceState({}, "", window.location.pathname);
+		  // If bookmarklet/title looks generic or is missing, try to extract better metadata using AI
+		  const looksGenericTitle =
+			  !finalTitle ||
+			  ["linkedin", "facebook", "twitter", "x", "instagram"]
+				  .some((word) => finalTitle!.toLowerCase().includes(word) && finalTitle!.split(" ").length <= 3);
+
+		  if (looksGenericTitle || !finalDescription || content) {
+			  try {
+				  // Pass content to AI service for better title/description generation
+				  const metadata = await extractUrlMetadata(urlParam, content);
+				  if (!finalTitle && metadata.title) {
+					  finalTitle = metadata.title;
+				  }
+				  if (!finalDescription && metadata.description) {
+					  finalDescription = metadata.description;
+				  }
+			  } catch (error) {
+				  console.error("Failed to auto-extract metadata for shared URL:", error);
+			  }
+		  }
+
+	    setCreatePrefill({
+		    url: urlParam,
+	      title: finalTitle,
+	      description: finalDescription,
+	      platform,
+	      categoryId,
+	      categoryName,
+      });
+
+	    // Remove query params to avoid re-opening on refresh
+	    window.history.replaceState({}, "", window.location.pathname);
+    })();
   }, [user]);
 
   // Get unique platforms from links
