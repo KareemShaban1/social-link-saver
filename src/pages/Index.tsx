@@ -12,8 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Search, Bookmark, User, Filter } from "lucide-react";
-import heroBg from "@/assets/hero-bg.jpg";
 import { detectPlatformFromUrl, extractUrlMetadata } from "@/lib/urlMetadata";
 
 interface Link {
@@ -60,6 +66,7 @@ const Index = () => {
     categoryId?: string;
     categoryName?: string;
   } | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const fetchData = async () => {
     if (!user) return;
@@ -199,16 +206,8 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Hero Section */}
-      <div className="relative bg-gradient-hero text-white overflow-hidden">
-        <div 
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `url(${heroBg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        />
+      {/* Hero Section - links/bookmarks themed background */}
+      <div className="relative hero-links-bg text-white overflow-hidden">
         <div className="relative container mx-auto px-4 py-16 md:py-24">
           <div className="max-w-3xl">
             <div className="flex items-center gap-3 mb-4">
@@ -248,86 +247,148 @@ const Index = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8 md:py-12">
-        {/* Horizontal Filters Bar */}
-        <div className="mb-8 rounded-xl border bg-card p-4 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Filter className="h-4 w-4" />
-            Filters
-            {activeFiltersCount > 0 && (
-              <Badge variant="secondary" className="ml-auto">
-                {activeFiltersCount} active
-              </Badge>
-            )}
+        {/* Filters: mobile = search + sheet; desktop = full bar */}
+        <div className="mb-8 space-y-4">
+          {/* Mobile: search + Filters button that opens sheet */}
+          <div className="flex flex-col gap-3 md:hidden">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 pointer-events-none" />
+              <Input
+                placeholder="Search links..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-full"
+              />
+            </div>
+            <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="w-full justify-between rounded-xl border bg-card shadow-sm">
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    <Filter className="h-4 w-4" />
+                    Filters
+                    {activeFiltersCount > 0 && (
+                      <Badge variant="secondary" className="ml-1">
+                        {activeFiltersCount}
+                      </Badge>
+                    )}
+                  </span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto">
+                <SheetHeader className="text-left">
+                  <SheetTitle>Filters</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4 space-y-6 pb-6">
+                  {availablePlatforms.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Platform</div>
+                      <div className="flex flex-wrap gap-2">
+                        <PlatformFilter
+                          platforms={availablePlatforms}
+                          selectedPlatform={selectedPlatform}
+                          onSelectPlatform={setSelectedPlatform}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-muted-foreground">Category</div>
+                    <CategoryFilter
+                      categories={categories}
+                      selectedCategory={selectedCategory}
+                      onSelectCategory={setSelectedCategory}
+                      compact
+                    />
+                  </div>
+                  {(selectedCategory !== null || selectedPlatform !== null || searchQuery.trim() !== "") && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setSelectedCategory(null);
+                        setSelectedPlatform(null);
+                        setSearchQuery("");
+                        setFiltersOpen(false);
+                      }}
+                    >
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
 
-          <Separator />
-
-          {/* Search */}
-          <div className="relative max-w-xl">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Search links..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          {/* Platform row (already horizontal) */}
-          {availablePlatforms.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-sm font-medium text-muted-foreground">Platform</div>
-              <div className="overflow-x-auto">
-                <div className="min-w-max pr-2">
-                  <PlatformFilter
-                    platforms={availablePlatforms}
-                    selectedPlatform={selectedPlatform}
-                    onSelectPlatform={setSelectedPlatform}
-                  />
+          {/* Desktop: full horizontal filters bar */}
+          <div className="hidden md:block rounded-xl border bg-card p-4 shadow-sm space-y-4">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Filter className="h-4 w-4" />
+              Filters
+              {activeFiltersCount > 0 && (
+                <Badge variant="secondary" className="ml-auto">
+                  {activeFiltersCount} active
+                </Badge>
+              )}
+            </div>
+            <Separator />
+            <div className="relative max-w-xl">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search links..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {availablePlatforms.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-muted-foreground">Platform</div>
+                <div className="overflow-x-auto">
+                  <div className="min-w-max pr-2">
+                    <PlatformFilter
+                      platforms={availablePlatforms}
+                      selectedPlatform={selectedPlatform}
+                      onSelectPlatform={setSelectedPlatform}
+                    />
+                  </div>
                 </div>
               </div>
+            )}
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-muted-foreground">Category</div>
+              <CategoryFilter
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
+              />
             </div>
-          )}
-
-          {/* Category row (will be horizontal after component update) */}
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-muted-foreground">Category</div>
-            <CategoryFilter
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onSelectCategory={setSelectedCategory}
-            />
+            {(selectedCategory !== null || selectedPlatform !== null || searchQuery.trim() !== "") && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedCategory(null);
+                  setSelectedPlatform(null);
+                  setSearchQuery("");
+                }}
+              >
+                Clear all
+              </Button>
+            )}
           </div>
-
-          {(selectedCategory !== null || selectedPlatform !== null || searchQuery.trim() !== "") && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSelectedCategory(null);
-                setSelectedPlatform(null);
-                setSearchQuery("");
-              }}
-            >
-              Clear all
-            </Button>
-          )}
         </div>
 
         {/* Results Count */}
         {!loading && links.length > 0 && (
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="text-sm text-muted-foreground">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+            <span>
               Showing <span className="font-medium text-foreground">{filteredLinks.length}</span> of{" "}
               <span className="font-medium text-foreground">{links.length}</span> link
               {links.length !== 1 ? "s" : ""}
-            </div>
+            </span>
             {(selectedCategory !== null || selectedPlatform !== null || searchQuery.trim() !== "") && (
               <Badge variant="secondary">Filtered</Badge>
             )}
-          </div>
-        )}
-
-        {/* Edit Link Dialog */}
+ {/* Edit Link Dialog */}
         <AddLinkDialog
           categories={categories}
           onLinkAdded={fetchData}
@@ -335,6 +396,10 @@ const Index = () => {
           linkToEdit={linkToEdit}
           onEditComplete={() => setLinkToEdit(null)}
         />
+          </div>
+        )}
+
+       
 
         {/* Links Grid */}
         {loading ? (

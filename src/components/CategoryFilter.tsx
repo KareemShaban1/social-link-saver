@@ -15,6 +15,8 @@ interface CategoryFilterProps {
   categories: Category[];
   selectedCategory: string | null;
   onSelectCategory: (categoryId: string | null) => void;
+  /** Use vertical compact layout (e.g. for mobile sheet) */
+  compact?: boolean;
 }
 
 // Helper function to lighten/darken colors for hover effects
@@ -36,7 +38,7 @@ const getContrastColor = (color: string): string => {
 	return brightness > 128 ? "#000000" : "#ffffff";
 };
 
-export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory }: CategoryFilterProps) => {
+export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory, compact = false }: CategoryFilterProps) => {
 	const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const parentCategories = categories.filter(c => !c.parent_id);
   const getSubcategories = (parentId: string) => categories.filter(c => c.parent_id === parentId);
@@ -52,6 +54,83 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory 
 	};
 
 	const isExpanded = (categoryId: string) => expandedCategories.has(categoryId);
+
+	// Compact vertical layout for mobile/sheet
+	if (compact) {
+		return (
+			<div className="space-y-2">
+				<Button
+					variant={selectedCategory === null ? "default" : "outline"}
+					size="sm"
+					onClick={() => onSelectCategory(null)}
+					className="w-full justify-start"
+				>
+					{selectedCategory === null && <Check className="h-4 w-4 mr-2" />}
+					<Grid3x3 className="h-4 w-4 mr-2" />
+					All categories
+				</Button>
+				{parentCategories.map((category) => {
+					const subcategories = getSubcategories(category.id);
+					const isSelected = selectedCategory === category.id;
+					const expanded = isExpanded(category.id);
+					return (
+						<Collapsible key={category.id} open={expanded} onOpenChange={() => toggleExpand(category.id)}>
+							<div className="rounded-lg border" style={{ borderColor: `${category.color}40` }}>
+								<div className="flex items-center gap-2 p-2">
+									<div className="w-4 h-4 rounded-full shrink-0 border-2" style={{ borderColor: category.color, backgroundColor: isSelected ? category.color : "transparent" }} />
+									<Button
+										variant={isSelected ? "default" : "ghost"}
+										size="sm"
+										className="flex-1 justify-start font-medium"
+										style={isSelected ? { backgroundColor: category.color, color: getContrastColor(category.color) } : {}}
+										onClick={() => onSelectCategory(category.id)}
+									>
+									{isSelected && <Check className="h-3 w-3 mr-1" />}
+									{category.name}
+								</Button>
+								{subcategories.length > 0 && (
+									<CollapsibleTrigger asChild>
+										<Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+											<ChevronRight className={`h-4 w-4 ${expanded ? "rotate-90" : ""}`} />
+										</Button>
+									</CollapsibleTrigger>
+								)}
+							</div>
+							<CollapsibleContent>
+								{subcategories.length > 0 && (
+									<div className="pl-4 pr-2 pb-2 space-y-1 border-t" style={{ borderColor: `${category.color}20` }}>
+										{subcategories.map((subcat) => {
+											const isSubSelected = selectedCategory === subcat.id;
+											return (
+												<Button
+													key={subcat.id}
+													variant={isSubSelected ? "default" : "ghost"}
+													size="sm"
+													className="w-full justify-start text-sm"
+													style={isSubSelected ? { backgroundColor: subcat.color, color: getContrastColor(subcat.color) } : {}}
+													onClick={() => onSelectCategory(subcat.id)}
+												>
+													{isSubSelected && <Check className="h-3 w-3 mr-1" />}
+													{subcat.name}
+												</Button>
+											);
+										})}
+									</div>
+								)}
+							</CollapsibleContent>
+						</div>
+						</Collapsible>
+					);
+				})}
+				{parentCategories.length === 0 && (
+					<div className="py-4 text-center text-sm text-muted-foreground">
+						<Folder className="h-8 w-8 mx-auto mb-1 opacity-50" />
+						No categories
+					</div>
+				)}
+			</div>
+		);
+	}
 
   return (
 	  <div className="space-y-3">

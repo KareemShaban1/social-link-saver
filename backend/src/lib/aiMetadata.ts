@@ -1,9 +1,3 @@
-import OpenAI from 'openai';
-
-const openai = new OpenAI({
-	apiKey: process.env.OPENAI_API_KEY,
-});
-
 interface MetadataResult {
 	title: string;
 	description: string;
@@ -136,81 +130,7 @@ function extractTextFromHTML(html: string): string {
 }
 
 /**
- * Uses OpenAI to generate intelligent title and description from content
- */
-async function generateMetadataWithAI(
-	content: string,
-	platform: string,
-	url: string
-): Promise<{ title: string; description: string }> {
-	if (!process.env.OPENAI_API_KEY) {
-		throw new Error('OPENAI_API_KEY is not configured');
-	}
-
-	// Truncate content if too long (to save tokens)
-	const maxContentLength = 3000;
-	const truncatedContent = content.length > maxContentLength
-		? content.substring(0, maxContentLength) + '...'
-		: content;
-
-	const prompt = `You are a content curator helping to save social media links. Analyze the following ${platform} post/page content and generate:
-
-1. A concise, engaging title (max 100 characters) that captures the main point or topic
-2. A clear, informative description (max 500 characters) that summarizes the key information
-
-Content:
-${truncatedContent}
-
-URL: ${url}
-Platform: ${platform}
-
-Respond in JSON format:
-{
-  "title": "Your generated title here",
-  "description": "Your generated description here"
-}`;
-
-	try {
-		const completion = await openai.chat.completions.create({
-			model: process.env.OPENAI_MODEL || 'gpt-4o-mini', // Use cheaper model by default
-			messages: [
-				{
-					role: 'system',
-					content: 'You are a helpful assistant that generates concise titles and descriptions for saved links. Always respond with valid JSON only.',
-				},
-				{
-					role: 'user',
-					content: prompt,
-				},
-			],
-			temperature: 0.7,
-			max_tokens: 300,
-			response_format: { type: 'json_object' },
-		});
-
-		const responseText = completion.choices[0]?.message?.content;
-		if (!responseText) {
-			throw new Error('No response from OpenAI');
-		}
-
-		const parsed = JSON.parse(responseText);
-
-		return {
-			title: parsed.title || extractTitleFromContent(content),
-			description: parsed.description || content.substring(0, 500),
-		};
-	} catch (error) {
-		console.error('OpenAI API error:', error);
-		// Fallback to simple extraction
-		return {
-			title: extractTitleFromContent(content),
-			description: content.substring(0, 500),
-		};
-	}
-}
-
-/**
- * Extracts a simple title from content (fallback)
+ * Extracts a simple title from content
  */
 function extractTitleFromContent(content: string): string {
 	if (!content) return '';
@@ -225,7 +145,8 @@ function extractTitleFromContent(content: string): string {
 }
 
 /**
- * Main function to extract metadata with AI enhancement
+ * Extracts metadata from a URL (title, description, platform) using page fetch and simple parsing.
+ * No paid APIs required.
  */
 export async function extractMetadataWithAI(
 	url: string,
@@ -235,33 +156,15 @@ export async function extractMetadataWithAI(
 
 	let content = providedContent || '';
 
-	// If no content provided, fetch from URL
 	if (!content) {
 		try {
 			const html = await fetchPageContent(url);
 			content = extractTextFromHTML(html);
 		} catch (error) {
 			console.error('Failed to fetch page content:', error);
-			// Continue with empty content, AI will use URL/domain info
 		}
 	}
 
-	// If we have content, use AI to generate title and description
-	if (content && content.length > 50) {
-		try {
-			const aiResult = await generateMetadataWithAI(content, platform, url);
-			return {
-				title: aiResult.title,
-				description: aiResult.description,
-				platform,
-			};
-		} catch (error) {
-			console.error('AI generation failed, using fallback:', error);
-			// Fallback to simple extraction
-		}
-	}
-
-	// Fallback: simple extraction
 	const title = content
 		? extractTitleFromContent(content)
 		: extractTitleFromUrl(url);

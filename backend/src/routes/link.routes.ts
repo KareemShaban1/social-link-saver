@@ -2,7 +2,7 @@ import express, { type Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import prisma from '../lib/prisma.js';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware.js';
-import { generateLinkMetadataWithAi } from '../lib/ai.js';
+import { extractMetadataWithAI } from '../lib/aiMetadata.js';
 
 const router = express.Router();
 
@@ -257,35 +257,35 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// AI-powered metadata generation for a link/post
+// Metadata generation for a link (title, description, platform from URL/content)
 router.post('/ai-metadata', async (req: AuthRequest, res: Response) => {
 	try {
-		const { url, platform, originalTitle, originalDescription } = req.body || {};
+		const { url, originalDescription } = req.body || {};
 
 		if (!url && !originalDescription) {
 			return res.status(400).json({
-				error: 'Either url or originalDescription is required for AI metadata generation',
+				error: 'Either url or originalDescription is required for metadata generation',
 			});
 		}
 
-		const result = await generateLinkMetadataWithAi({
-			url,
-			platform,
-			originalTitle,
-			originalDescription,
+		if (!url) {
+			return res.status(400).json({
+				error: 'URL is required for metadata extraction',
+			});
+		}
+
+		const result = await extractMetadataWithAI(url, originalDescription);
+
+		res.json({
+			metadata: {
+				title: result.title,
+				description: result.description,
+			},
+			platform: result.platform,
 		});
-
-		if (!result) {
-			return res.status(503).json({
-				error:
-					'AI metadata service is unavailable. Ensure OPENAI_API_KEY is set on the backend server.',
-			});
-		}
-
-		res.json({ metadata: result });
 	} catch (error) {
-		console.error('AI metadata error:', error);
-		res.status(500).json({ error: 'Failed to generate AI metadata for link' });
+		console.error('Metadata extraction error:', error);
+		res.status(500).json({ error: 'Failed to extract metadata for link' });
 	}
 });
 

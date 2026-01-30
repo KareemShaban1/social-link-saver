@@ -6,7 +6,7 @@ const router = express.Router();
 
 /**
  * POST /api/metadata/extract
- * Extracts metadata from a URL using AI
+ * Extracts metadata from a URL (title, description, platform). No API key required.
  * Body: { url: string, content?: string }
  */
 router.post(
@@ -23,14 +23,6 @@ router.post(
 			}
 
 			const { url, content } = req.body;
-
-			// Check if OpenAI is configured
-			if (!process.env.OPENAI_API_KEY) {
-				return res.status(503).json({
-					error: 'AI metadata extraction is not configured. Please set OPENAI_API_KEY environment variable.',
-					fallback: true,
-				});
-			}
 
 			const metadata = await extractMetadataWithAI(url, content);
 

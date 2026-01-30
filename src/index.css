@@ -39,6 +39,26 @@ All colors MUST be HSL.
     --radius: 0.75rem;
     
     --gradient-hero: linear-gradient(135deg, hsl(195 85% 45%), hsl(195 85% 60%));
+    --gradient-hero-mesh: 
+      radial-gradient(ellipse 80% 50% at 20% 40%, hsl(195 75% 55% / 0.4), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 60%, hsl(210 70% 50% / 0.3), transparent),
+      linear-gradient(135deg, hsl(195 85% 42%), hsl(200 80% 52%));
+    --hero-pattern: 
+      radial-gradient(circle at center, rgba(255,255,255,0.08) 0%, transparent 50%),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 24px,
+        rgba(255,255,255,0.03) 24px,
+        rgba(255,255,255,0.03) 25px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 24px,
+        rgba(255,255,255,0.03) 24px,
+        rgba(255,255,255,0.03) 25px
+      );
     --gradient-card: linear-gradient(to bottom, hsl(0 0% 100%), hsl(220 25% 98%));
     
     --shadow-sm: 0 1px 2px 0 hsl(220 15% 20% / 0.05);
@@ -63,6 +83,13 @@ All colors MUST be HSL.
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  /* Hero section: links/bookmarks themed background (mesh + subtle grid) */
+  .hero-links-bg {
+    background: var(--gradient-hero-mesh), var(--hero-pattern);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 25px 25px, 25px 25px;
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
   }
 
   .dark {
@@ -95,6 +122,14 @@ All colors MUST be HSL.
     --ring: 195 85% 55%;
     
     --gradient-hero: linear-gradient(135deg, hsl(195 85% 45%), hsl(195 85% 60%));
+    --gradient-hero-mesh: 
+      radial-gradient(ellipse 80% 50% at 20% 40%, hsl(195 75% 55% / 0.35), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 60%, hsl(210 70% 50% / 0.25), transparent),
+      linear-gradient(135deg, hsl(195 85% 38%), hsl(200 80% 48%));
+    --hero-pattern: 
+      radial-gradient(circle at center, rgba(255,255,255,0.06) 0%, transparent 50%),
+      repeating-linear-gradient(90deg, transparent, transparent 24px, rgba(255,255,255,0.02) 24px, rgba(255,255,255,0.02) 25px),
+      repeating-linear-gradient(0deg, transparent, transparent 24px, rgba(255,255,255,0.02) 24px, rgba(255,255,255,0.02) 25px);
     --gradient-card: linear-gradient(to bottom, hsl(220 18% 16%), hsl(220 18% 18%));
     
     --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.15);
