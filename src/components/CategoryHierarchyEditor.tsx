@@ -28,8 +28,26 @@ export const CategoryHierarchyEditor = ({
   const { toast } = useToast();
 
   const parentCategories = categories.filter(c => !c.parent_id);
-  const getSubcategories = (parentId: string) => 
+  const getSubcategories = (parentId: string) =>
     categories.filter(c => c.parent_id === parentId);
+
+  const getDescendantIds = (catId: string): string[] => {
+    const direct = getSubcategories(catId).map(c => c.id);
+    return [...direct, ...direct.flatMap(id => getDescendantIds(id))];
+  };
+
+  /** All categories that can be a parent (for move dropdown). Exclude the category being moved and its descendants. */
+  const getParentOptions = (excludeId: string): { id: string; name: string; color: string; depth: number }[] => {
+    const excludeSet = new Set([excludeId, ...getDescendantIds(excludeId)]);
+    const result: { id: string; name: string; color: string; depth: number }[] = [];
+    const add = (cat: Category, depth: number) => {
+      if (excludeSet.has(cat.id)) return;
+      result.push({ id: cat.id, name: cat.name, color: cat.color, depth });
+      getSubcategories(cat.id).forEach(sub => add(sub, depth + 1));
+    };
+    parentCategories.forEach(p => add(p, 0));
+    return result;
+  };
 
   const toggleExpand = (categoryId: string) => {
     const newExpanded = new Set(expandedCategories);
@@ -186,88 +204,79 @@ export const CategoryHierarchyEditor = ({
 					  )}
 				  </div>
 
-				  {/* Subcategories List */}
+				  {/* Subcategories List (recursive tree) */}
 				  {isExpanded && subcategories.length > 0 && (
 					  <div className="flex-1 p-2 space-y-1 overflow-y-auto max-h-[400px]">
-						  {subcategories.map((subcat) => (
-							  <div
-								  key={subcat.id}
-				  className="group flex items-center gap-2 p-2 rounded-md border bg-muted/30 hover:shadow-sm transition-all"
-			  >
-				  <GripVertical className="h-3 w-3 text-muted-foreground shrink-0" />
-
-				  <div
-					  className="w-4 h-4 rounded shrink-0"
-					  style={{ backgroundColor: subcat.color }}
-				  />
-
-				  <span className="text-sm font-medium flex-1 truncate">{subcat.name}</span>
-
-				  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-					  {/* Move to another parent */}
-					  {parentCategories.filter(p => p.id !== parent.id).length > 0 && (
-						  <div className="relative group/move">
-							  <Button
-								  variant="ghost"
-								  size="icon"
-								  className="h-7 w-7 hover:bg-accent/10 hover:text-accent"
-								  title="Move to another parent"
-							  >
-								  <ArrowRight className="h-3 w-3" />
-							  </Button>
-							  <div className="absolute right-0 top-full mt-1 hidden group-hover/move:block z-50">
-								  <div className="bg-popover border rounded-lg shadow-lg p-2 min-w-[160px]">
-									  <p className="text-xs text-muted-foreground mb-2 px-2">Move to:</p>
-									  {parentCategories
-										  .filter(p => p.id !== parent.id)
-										  .map((targetParent) => (
-											  <button
-												  key={targetParent.id}
-												  onClick={() => moveSubcategory(subcat, targetParent.id)}
-												  className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded flex items-center gap-2"
-											  >
-												  <div
-													  className="w-4 h-4 rounded shrink-0"
-													  style={{ backgroundColor: targetParent.color }}
-												  />
-												  {targetParent.name}
-											  </button>
-										  ))}
-								  </div>
-							  </div>
-						  </div>
-					  )}
-
-					  {/* Convert to parent */}
-					  <Button
-						  variant="ghost"
-						  size="icon"
-						  onClick={() => convertToParent(subcat)}
-						  className="h-7 w-7 hover:bg-accent/10 hover:text-accent"
-						  title="Convert to parent category"
-					  >
-						  <ArrowLeft className="h-3 w-3" />
-					  </Button>
-
-					  <Button
-						  variant="ghost"
-						  size="icon"
-						  onClick={() => onEdit(subcat)}
-						  className="h-7 w-7 hover:bg-primary/10 hover:text-primary"
-					  >
-						  <Pencil className="h-3 w-3" />
-					  </Button>
-					  <Button
-						  variant="ghost"
-						  size="icon"
-						  onClick={() => onDelete(subcat)}
-						  className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
-					  >
-						  <Trash2 className="h-3 w-3" />
-					  </Button>
-				  </div>
-			  </div>
-		  ))}
+						  {(() => {
+							  function renderSubcategoryLevel(parentCat: Category) {
+								  return getSubcategories(parentCat.id).map((subcat) => {
+									  const subHasChildren = getSubcategories(subcat.id).length > 0;
+									  const subExpanded = expandedCategories.has(subcat.id);
+									  const moveTargets = getParentOptions(subcat.id).filter(t => t.id !== subcat.parent_id);
+									  return (
+										  <div key={subcat.id} className="space-y-1">
+											  <div className="group flex items-center gap-2 p-2 rounded-md border bg-muted/30 hover:shadow-sm transition-all">
+												  <button
+													  onClick={() => subHasChildren && toggleExpand(subcat.id)}
+													  className="p-0.5 hover:bg-muted rounded shrink-0"
+													  disabled={!subHasChildren}
+												  >
+													  {subHasChildren ? (
+														  subExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />
+													  ) : (
+														  <div className="w-3 h-3" />
+													  )}
+												  </button>
+												  <GripVertical className="h-3 w-3 text-muted-foreground shrink-0" />
+												  <div className="w-4 h-4 rounded shrink-0" style={{ backgroundColor: subcat.color }} />
+												  <span className="text-sm font-medium flex-1 truncate">{subcat.name}</span>
+												  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+													  {moveTargets.length > 0 && (
+														  <div className="relative group/move">
+															  <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent/10 hover:text-accent" title="Move to another parent">
+																  <ArrowRight className="h-3 w-3" />
+															  </Button>
+															  <div className="absolute right-0 top-full mt-1 hidden group-hover/move:block z-50">
+																  <div className="bg-popover border rounded-lg shadow-lg p-2 min-w-[180px] max-h-[280px] overflow-y-auto">
+																  <p className="text-xs text-muted-foreground mb-2 px-2">Move to:</p>
+																  {moveTargets.map((target) => (
+																	  <button
+																		  key={target.id}
+																		  onClick={() => moveSubcategory(subcat, target.id)}
+																		  className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded flex items-center gap-2"
+																	  >
+																		  <div className="w-4 h-4 rounded shrink-0" style={{ backgroundColor: target.color }} />
+																		  <span style={target.depth > 0 ? { marginLeft: target.depth * 12 } : undefined}>
+																		  {target.depth > 0 ? "└─ " : ""}{target.name}
+																		  </span>
+																	  </button>
+																  ))}
+																  </div>
+															  </div>
+														  </div>
+													  )}
+													  <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent/10 hover:text-accent" title="Convert to parent category" onClick={() => convertToParent(subcat)}>
+														  <ArrowLeft className="h-3 w-3" />
+													  </Button>
+													  <Button variant="ghost" size="icon" onClick={() => onEdit(subcat)} className="h-7 w-7 hover:bg-primary/10 hover:text-primary">
+														  <Pencil className="h-3 w-3" />
+													  </Button>
+													  <Button variant="ghost" size="icon" onClick={() => onDelete(subcat)} className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive">
+														  <Trash2 className="h-3 w-3" />
+													  </Button>
+												  </div>
+											  </div>
+											  {subHasChildren && subExpanded && (
+												  <div className="pl-4 border-l-2 border-muted space-y-1">
+													  {renderSubcategoryLevel(subcat)}
+												  </div>
+											  )}
+										  </div>
+									  );
+								  });
+							  }
+							  return renderSubcategoryLevel(parent);
+						  })()}
 					  </div>
 				  )}
 
@@ -292,7 +301,7 @@ export const CategoryHierarchyEditor = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setExpandedCategories(new Set(parentCategories.map(c => c.id)))}
+              onClick={() => setExpandedCategories(new Set(categories.filter(c => getSubcategories(c.id).length > 0).map(c => c.id)))}
             >
               Expand All
             </Button>

@@ -1,8 +1,8 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Check, ChevronRight, Grid3x3, Folder } from "lucide-react";
-import { useState } from "react";
 
 interface Category {
   id: string;
@@ -40,8 +40,18 @@ const getContrastColor = (color: string): string => {
 
 export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory, compact = false }: CategoryFilterProps) => {
 	const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const parentCategories = categories.filter(c => !c.parent_id);
-  const getSubcategories = (parentId: string) => categories.filter(c => c.parent_id === parentId);
+	const parentCategories = categories.filter(c => !c.parent_id);
+	const getSubcategories = (parentId: string) => categories.filter(c => c.parent_id === parentId);
+
+	const getDescendantIds = (catId: string): string[] => {
+		const direct = categories.filter(c => c.parent_id === catId).map(c => c.id);
+		return [...direct, ...direct.flatMap(id => getDescendantIds(id))];
+	};
+
+	const hasSelectedInBranch = (catId: string) =>
+		selectedCategory === catId || getDescendantIds(catId).includes(selectedCategory ?? "");
+
+	const getDirectChildCount = (catId: string) => getSubcategories(catId).length;
 
 	const toggleExpand = (categoryId: string) => {
 		const newExpanded = new Set(expandedCategories);
@@ -54,6 +64,117 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 	};
 
 	const isExpanded = (categoryId: string) => expandedCategories.has(categoryId);
+
+	function renderSubcategoryLevel(parentCat: Category) {
+		return getSubcategories(parentCat.id).map((subcat) => {
+			const isSubSelected = selectedCategory === subcat.id;
+			const subHoverColor = adjustColor(subcat.color, 20);
+			const subSelectedBgColor = `${subcat.color}20`;
+			const subHoverBgColor = `${subcat.color}10`;
+			const subHasChildren = getSubcategories(subcat.id).length > 0;
+			const subExpanded = isExpanded(subcat.id);
+			return (
+				<div
+					key={subcat.id}
+					className={`group/sub relative rounded-md transition-all duration-200 ${isSubSelected ? "shadow-sm" : "hover:shadow-sm"}`}
+					style={{ backgroundColor: isSubSelected ? subSelectedBgColor : "transparent" }}
+				>
+					{subHasChildren ? (
+						<Collapsible open={subExpanded} onOpenChange={() => toggleExpand(subcat.id)}>
+							<div className="flex items-center gap-2 p-2">
+								<CollapsibleTrigger asChild>
+									<Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
+										<ChevronRight className={`h-3 w-3 ${subExpanded ? "rotate-90" : ""}`} />
+									</Button>
+								</CollapsibleTrigger>
+								<div
+									className="w-3 h-3 rounded-full border shrink-0 transition-all duration-200 group-hover/sub:scale-125"
+									style={{
+										backgroundColor: isSubSelected ? subcat.color : "transparent",
+										borderColor: subcat.color,
+										boxShadow: isSubSelected ? `0 0 6px ${subcat.color}40` : "none",
+									}}
+								/>
+								<span className="flex-1 text-sm font-medium transition-colors duration-200 truncate" style={{ color: isSubSelected ? subcat.color : "inherit" }}>
+									{subcat.name}
+								</span>
+								<Button
+									variant={isSubSelected ? "default" : "ghost"}
+									size="sm"
+									onClick={() => onSelectCategory(subcat.id)}
+									className="h-7 px-2 text-xs shrink-0 transition-all duration-200"
+									style={{
+										backgroundColor: isSubSelected ? subcat.color : "transparent",
+										color: isSubSelected ? getContrastColor(subcat.color) : subcat.color,
+									}}
+									onMouseEnter={(e) => {
+										if (!isSubSelected) {
+											e.currentTarget.style.backgroundColor = subHoverBgColor;
+											e.currentTarget.style.color = subHoverColor;
+										}
+									}}
+									onMouseLeave={(e) => {
+										if (!isSubSelected) {
+											e.currentTarget.style.backgroundColor = "transparent";
+											e.currentTarget.style.color = subcat.color;
+										}
+									}}
+								>
+									{isSubSelected && <Check className="h-3 w-3 mr-1" />}
+									{isSubSelected ? "✓" : "Select"}
+								</Button>
+							</div>
+							<CollapsibleContent>
+								<div className="pl-4 border-l-2 space-y-1" style={{ borderColor: `${subcat.color}30` }}>
+									{renderSubcategoryLevel(subcat)}
+								</div>
+							</CollapsibleContent>
+						</Collapsible>
+					) : (
+						<div className="flex items-center gap-2 p-2">
+							<div className="w-6 shrink-0" />
+							<div
+								className="w-3 h-3 rounded-full border shrink-0 transition-all duration-200 group-hover/sub:scale-125"
+								style={{
+									backgroundColor: isSubSelected ? subcat.color : "transparent",
+									borderColor: subcat.color,
+									boxShadow: isSubSelected ? `0 0 6px ${subcat.color}40` : "none",
+								}}
+							/>
+							<span className="flex-1 text-sm font-medium transition-colors duration-200 truncate" style={{ color: isSubSelected ? subcat.color : "inherit" }}>
+								{subcat.name}
+							</span>
+							<Button
+								variant={isSubSelected ? "default" : "ghost"}
+								size="sm"
+								onClick={() => onSelectCategory(subcat.id)}
+								className="h-7 px-2 text-xs shrink-0 transition-all duration-200"
+								style={{
+									backgroundColor: isSubSelected ? subcat.color : "transparent",
+									color: isSubSelected ? getContrastColor(subcat.color) : subcat.color,
+								}}
+								onMouseEnter={(e) => {
+									if (!isSubSelected) {
+										e.currentTarget.style.backgroundColor = subHoverBgColor;
+										e.currentTarget.style.color = subHoverColor;
+									}
+								}}
+								onMouseLeave={(e) => {
+									if (!isSubSelected) {
+										e.currentTarget.style.backgroundColor = "transparent";
+										e.currentTarget.style.color = subcat.color;
+									}
+								}}
+							>
+								{isSubSelected && <Check className="h-3 w-3 mr-1" />}
+								{isSubSelected ? "✓" : "Select"}
+							</Button>
+						</div>
+					)}
+				</div>
+			);
+		});
+	}
 
 	// Compact vertical layout for mobile/sheet
 	if (compact) {
@@ -99,22 +220,57 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 							<CollapsibleContent>
 								{subcategories.length > 0 && (
 									<div className="pl-4 pr-2 pb-2 space-y-1 border-t" style={{ borderColor: `${category.color}20` }}>
-										{subcategories.map((subcat) => {
-											const isSubSelected = selectedCategory === subcat.id;
-											return (
-												<Button
-													key={subcat.id}
-													variant={isSubSelected ? "default" : "ghost"}
-													size="sm"
-													className="w-full justify-start text-sm"
-													style={isSubSelected ? { backgroundColor: subcat.color, color: getContrastColor(subcat.color) } : {}}
-													onClick={() => onSelectCategory(subcat.id)}
-												>
-													{isSubSelected && <Check className="h-3 w-3 mr-1" />}
-													{subcat.name}
-												</Button>
-											);
-										})}
+										{(() => {
+											function renderSubTree(parentCat: Category, depth: number) {
+												return getSubcategories(parentCat.id).map((subcat) => {
+													const isSubSelected = selectedCategory === subcat.id;
+													const subHasChildren = getSubcategories(subcat.id).length > 0;
+													const subExpanded = isExpanded(subcat.id);
+													return (
+														<div key={subcat.id} className="space-y-1">
+															{subHasChildren ? (
+																<Collapsible open={subExpanded} onOpenChange={() => toggleExpand(subcat.id)}>
+																	<div className="flex items-center gap-1">
+																		<CollapsibleTrigger asChild>
+																			<Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
+																				<ChevronRight className={`h-3 w-3 ${subExpanded ? "rotate-90" : ""}`} />
+																			</Button>
+																		</CollapsibleTrigger>
+																		<Button
+																			variant={isSubSelected ? "default" : "ghost"}
+																			size="sm"
+																			className="flex-1 justify-start text-sm"
+																			style={isSubSelected ? { backgroundColor: subcat.color, color: getContrastColor(subcat.color) } : {}}
+																			onClick={() => onSelectCategory(subcat.id)}
+																		>
+																			{isSubSelected && <Check className="h-3 w-3 mr-1" />}
+																			{subcat.name}
+																		</Button>
+																	</div>
+																	<CollapsibleContent>
+																		<div className="pl-6 pr-2 pt-1 space-y-1">
+																			{renderSubTree(subcat, depth + 1)}
+																		</div>
+																	</CollapsibleContent>
+																</Collapsible>
+															) : (
+																<Button
+																	variant={isSubSelected ? "default" : "ghost"}
+																	size="sm"
+																	className="w-full justify-start text-sm"
+																	style={isSubSelected ? { backgroundColor: subcat.color, color: getContrastColor(subcat.color) } : {}}
+																	onClick={() => onSelectCategory(subcat.id)}
+																>
+																	{isSubSelected && <Check className="h-3 w-3 mr-1" />}
+																	{subcat.name}
+																</Button>
+															)}
+														</div>
+													);
+												});
+											}
+											return renderSubTree(category, 0);
+										})()}
 									</div>
 								)}
 							</CollapsibleContent>
@@ -155,7 +311,7 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 				  {parentCategories.map((category) => {
 				  const subcategories = getSubcategories(category.id);
 				  const isSelected = selectedCategory === category.id;
-				  const hasSelectedSubcategory = subcategories.some(sub => selectedCategory === sub.id);
+				  const hasSelectedSubcategory = hasSelectedInBranch(category.id) && !isSelected;
 				  const isParentSelected = isSelected || hasSelectedSubcategory;
 				  const expanded = isExpanded(category.id);
 				  const hoverColor = adjustColor(category.color, 20);
@@ -234,8 +390,8 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 
 							        {/* Bottom Row: Badge and Select Button */}
 							        <div className="flex items-center justify-between gap-2">
-								        {/* Subcategory Count Badge */}
-								        {subcategories.length > 0 && (
+								        {/* Subcategory Count Badge (direct children) */}
+								        {getDirectChildCount(category.id) > 0 && (
 									        <Badge
 										        variant="outline"
 										        className="text-xs shrink-0 transition-all duration-200"
@@ -245,7 +401,7 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 											        backgroundColor: expanded ? hoverBgColor : "transparent",
 										        }}
 									        >
-										        {subcategories.length}
+										        {getDirectChildCount(category.id)}
 									        </Badge>
 								        )}
 
@@ -285,76 +441,11 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 						        </div>
 					        </div>
 
-					        {/* Subcategories List */}
+					        {/* Subcategories List (recursive tree) */}
 					        <CollapsibleContent className="overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-1 data-[state=open]:slide-in-from-top-1">
 						        {subcategories.length > 0 && (
 							        <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[260px] border-t" style={{ borderColor: `${category.color}20` }}>
-								        {subcategories.map((subcat) => {
-									        const isSubSelected = selectedCategory === subcat.id;
-									        const subHoverColor = adjustColor(subcat.color, 20);
-									        const subSelectedBgColor = `${subcat.color}20`;
-									        const subHoverBgColor = `${subcat.color}10`;
-
-									        return (
-										        <div
-											        key={subcat.id}
-											        className={`group/sub relative rounded-md transition-all duration-200 ${isSubSelected ? "shadow-sm" : "hover:shadow-sm"
-												        }`}
-											        style={{
-												        backgroundColor: isSubSelected ? subSelectedBgColor : "transparent",
-											        }}
-										        >
-											        <div className="flex items-center gap-2 p-2">
-												        {/* Subcategory Indicator */}
-												        <div
-													        className="w-3 h-3 rounded-full border shrink-0 transition-all duration-200 group-hover/sub:scale-125"
-													        style={{
-														        backgroundColor: isSubSelected ? subcat.color : "transparent",
-														        borderColor: subcat.color,
-														        boxShadow: isSubSelected ? `0 0 6px ${subcat.color}40` : "none",
-													        }}
-												        />
-
-												        {/* Subcategory Name */}
-												        <span
-													        className="flex-1 text-sm font-medium transition-colors duration-200 truncate"
-													        style={{
-														        color: isSubSelected ? subcat.color : "inherit",
-													        }}
-												        >
-													        {subcat.name}
-												        </span>
-
-												        {/* Select Button */}
-												        <Button
-													        variant={isSubSelected ? "default" : "ghost"}
-													        size="sm"
-													        onClick={() => onSelectCategory(subcat.id)}
-													        className="h-7 px-2 text-xs shrink-0 transition-all duration-200"
-													        style={{
-														        backgroundColor: isSubSelected ? subcat.color : "transparent",
-														        color: isSubSelected ? getContrastColor(subcat.color) : subcat.color,
-													        }}
-													        onMouseEnter={(e) => {
-														        if (!isSubSelected) {
-															        e.currentTarget.style.backgroundColor = subHoverBgColor;
-															        e.currentTarget.style.color = subHoverColor;
-														        }
-													        }}
-													        onMouseLeave={(e) => {
-														        if (!isSubSelected) {
-															        e.currentTarget.style.backgroundColor = "transparent";
-															        e.currentTarget.style.color = subcat.color;
-														        }
-													        }}
-												        >
-													        {isSubSelected && <Check className="h-3 w-3 mr-1" />}
-													        {isSubSelected ? "✓" : "Select"}
-												        </Button>
-											        </div>
-										        </div>
-									        );
-								        })}
+								        {renderSubcategoryLevel(category)}
 										  </div>
 									  )}
 								  </CollapsibleContent>

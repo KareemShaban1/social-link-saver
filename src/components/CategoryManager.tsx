@@ -50,6 +50,26 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 	const parentCategories = categories.filter(c => !c.parent_id);
 	const getSubcategories = (parentId: string) => categories.filter(c => c.parent_id === parentId);
 
+	// All categories that can be a parent, in tree order (for dropdown). When editing, exclude self and descendants to avoid cycles.
+	const getDescendantIds = (catId: string): string[] => {
+		const direct = categories.filter(c => c.parent_id === catId).map(c => c.id);
+		return [...direct, ...direct.flatMap(id => getDescendantIds(id))];
+	};
+
+	const getParentOptions = (): { id: string; label: string; depth: number }[] => {
+		const excludeSet = editingCategory
+			? new Set([editingCategory.id, ...getDescendantIds(editingCategory.id)])
+			: new Set<string>();
+		const result: { id: string; label: string; depth: number }[] = [];
+		const add = (cat: Category, depth: number) => {
+			if (excludeSet.has(cat.id)) return;
+			result.push({ id: cat.id, label: cat.name, depth });
+			getSubcategories(cat.id).forEach(sub => add(sub, depth + 1));
+		};
+		parentCategories.forEach(p => add(p, 0));
+		return result;
+	};
+
 	const resetForm = () => {
 		setNewName("");
 		setNewColor(PRESET_COLORS[0]);
@@ -231,14 +251,15 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 											className="w-full h-10 px-3 rounded-md border border-input bg-background"
 										>
 											<option value="">None (Top-level category)</option>
-											{parentCategories
-												.filter(c => c.id !== editingCategory?.id)
-												.map((category) => (
-													<option key={category.id} value={category.id}>
-														{category.name}
-													</option>
-												))}
+											{getParentOptions().map(({ id, label, depth }) => (
+												<option key={id} value={id}>
+													{depth === 0 ? label : "\u00A0\u00A0".repeat(depth) + "└─ " + label}
+												</option>
+											))}
 										</select>
+										<p className="text-xs text-muted-foreground">
+											Choose a main category or a sub-category to nest under it.
+										</p>
 									</div>
 									<div className="space-y-2">
 										<Label>Color</Label>
@@ -297,7 +318,7 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 								</div>
 							</div>
 
-							{/* Categories List */}
+							{/* Categories List (recursive tree) */}
 							<div className="space-y-2">
 								<h3 className="font-semibold text-sm">Existing Categories</h3>
 								{categories.length === 0 ? (
@@ -308,66 +329,49 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 									<div className="space-y-2">
 										{parentCategories.map((category) => (
 											<div key={category.id} className="space-y-2">
-												<div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:shadow-sm transition-shadow">
-													<div className="flex items-center gap-3">
-														<div
-															className="w-8 h-8 rounded-lg shrink-0"
-															style={{ backgroundColor: category.color }}
-														/>
-														<span className="font-medium">{category.name}</span>
-													</div>
-													<div className="flex gap-1">
-														<Button
-															variant="ghost"
-															size="icon"
-															onClick={() => startEdit(category)}
-															className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-														>
-															<Pencil className="h-4 w-4" />
-														</Button>
-														<Button
-															variant="ghost"
-															size="icon"
-															onClick={() => setDeleteCategory(category)}
-															className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-														>
-															<Trash2 className="h-4 w-4" />
-														</Button>
-													</div>
-												</div>
-												{/* Subcategories */}
-												{getSubcategories(category.id).map((subcat) => (
-													<div
-														key={subcat.id}
-														className="flex items-center justify-between p-3 pl-12 rounded-lg border bg-muted/30 hover:shadow-sm transition-shadow ml-4"
-													>
-														<div className="flex items-center gap-3">
-															<div
-																className="w-6 h-6 rounded-lg shrink-0"
-																style={{ backgroundColor: subcat.color }}
-															/>
-															<span className="font-medium text-sm">{subcat.name}</span>
-														</div>
-														<div className="flex gap-1">
-															<Button
-																variant="ghost"
-																size="icon"
-																onClick={() => startEdit(subcat)}
-																className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-															>
-																<Pencil className="h-4 w-4" />
-															</Button>
-															<Button
-																variant="ghost"
-																size="icon"
-																onClick={() => setDeleteCategory(subcat)}
-																className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-															>
-																<Trash2 className="h-4 w-4" />
-															</Button>
-														</div>
-													</div>
-												))}
+												{(() => {
+													function renderCategoryTree(cat: Category, depth: number) {
+														const isTop = depth === 0;
+														const subcats = getSubcategories(cat.id);
+														return (
+															<>
+																<div
+																	key={cat.id}
+																	className={`flex items-center justify-between p-3 rounded-lg border hover:shadow-sm transition-shadow ${isTop ? "bg-card" : "bg-muted/30"}`}
+																	style={depth > 0 ? { marginLeft: depth * 20 } : undefined}
+																>
+																	<div className="flex items-center gap-3">
+																		<div
+																			className={`rounded-lg shrink-0 ${isTop ? "w-8 h-8" : "w-6 h-6"}`}
+																			style={{ backgroundColor: cat.color }}
+																		/>
+																		<span className={isTop ? "font-medium" : "font-medium text-sm"}>{cat.name}</span>
+																	</div>
+																	<div className="flex gap-1">
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			onClick={() => startEdit(cat)}
+																			className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+																		>
+																			<Pencil className="h-4 w-4" />
+																		</Button>
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			onClick={() => setDeleteCategory(cat)}
+																			className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+																		>
+																			<Trash2 className="h-4 w-4" />
+																		</Button>
+																	</div>
+																</div>
+																{subcats.map((sub) => renderCategoryTree(sub, depth + 1))}
+															</>
+														);
+													}
+													return renderCategoryTree(category, 0);
+												})()}
 											</div>
 										))}
 									</div>

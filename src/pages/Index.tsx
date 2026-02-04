@@ -29,6 +29,7 @@ interface Link {
   description?: string;
   platform: string;
   category_id?: string;
+  categoryId?: string;
   categories?: {
     name: string;
     color: string;
@@ -172,11 +173,22 @@ const Index = () => {
   const activeFiltersCount =
     (selectedCategory ? 1 : 0) + (selectedPlatform ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
 
+  // When a category is selected, show links in that category or any descendant (nested subcategories)
+  const getDescendantIds = (catId: string): string[] => {
+    const direct = categories.filter((c) => c.parent_id === catId).map((c) => c.id);
+    return [...direct, ...direct.flatMap((id) => getDescendantIds(id))];
+  };
+  const categoryIdMatches = (linkCategoryId: string | undefined): boolean => {
+    if (!selectedCategory) return true;
+    if (!linkCategoryId) return false;
+    const lid = linkCategoryId;
+    return lid === selectedCategory || getDescendantIds(selectedCategory).includes(lid);
+  };
+
   // Use client-side filtering (or move to backend)
   const filteredLinks = links.filter((link) => {
-    const categoryMatch = selectedCategory === null || 
-      link.category_id === selectedCategory || 
-      link.categoryId === selectedCategory;
+    const linkCatId = link.category_id ?? link.categoryId;
+    const categoryMatch = selectedCategory === null || categoryIdMatches(linkCatId);
     const platformMatch = selectedPlatform === null || link.platform === selectedPlatform;
     const searchMatch =
       searchQuery === "" ||
