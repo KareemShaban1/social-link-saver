@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { LogOut, User, CreditCard } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { LogOut, User, CreditCard, ArrowLeft } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 
 interface UserProfile {
   full_name: string | null;
@@ -143,6 +143,12 @@ const Account = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 md:py-12 max-w-4xl">
+        <Link to="/">
+          <Button variant="ghost" size="sm" className="mb-6 -ml-2">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+        </Link>
         <h1 className="text-3xl font-bold mb-8">Account Settings</h1>
 
         <div className="space-y-6">
