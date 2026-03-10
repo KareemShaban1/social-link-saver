@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bookmark, FolderTree, Layers3, Sparkles } from "lucide-react";
+import { Bookmark, Download, FolderTree, Layers3, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,11 @@ interface PublicStats {
   linksLast24Hours: number;
 }
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
+
 const Landing = () => {
   const { user } = useAuth();
   const [workspaceStats, setWorkspaceStats] = useState<WorkspaceStats>({
@@ -37,6 +42,9 @@ const Landing = () => {
   });
   const [loadingStats, setLoadingStats] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [installing, setInstalling] = useState(false);
 
   const fetchStats = useCallback(async () => {
     setLoadingStats(true);
@@ -76,6 +84,31 @@ const Landing = () => {
     return () => window.clearInterval(intervalId);
   }, [fetchStats]);
 
+  useEffect(() => {
+    const inStandaloneMode =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+    setIsInstalled(inStandaloneMode);
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setDeferredPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
   const heroSubtitle = useMemo(() => {
     if (user) {
       return "Your links, categories, and platforms update live as you organize.";
@@ -88,15 +121,36 @@ const Landing = () => {
     ? "Live from your account"
     : `Live across ${publicStats.totalUsers} registered user${publicStats.totalUsers === 1 ? "" : "s"}`;
 
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    setInstalling(true);
+    try {
+      await deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === "accepted") {
+        setIsInstalled(true);
+      }
+    } finally {
+      setDeferredPrompt(null);
+      setInstalling(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-2">
-            <Bookmark className="h-6 w-6 text-primary" />
+            <img src="/pwa-192x192.svg" alt="LinkSaver icon" className="h-6 w-6 rounded-md" />
             <span className="text-lg font-semibold">LinkSaver</span>
           </div>
           <div className="flex items-center gap-2">
+            {!isInstalled && deferredPrompt && (
+              <Button size="sm" variant="outline" onClick={handleInstallApp} disabled={installing}>
+                <Download className="mr-2 h-4 w-4" />
+                {installing ? "Installing..." : "Install App"}
+              </Button>
+            )}
             {user ? (
               <>
                 <Link to="/app">
