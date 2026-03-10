@@ -219,10 +219,7 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 								<Plus className="h-4 w-4" />
 								Add/Edit
 							</TabsTrigger>
-							<TabsTrigger value="hierarchy" className="flex items-center gap-2">
-								<Network className="h-4 w-4" />
-								Hierarchy
-							</TabsTrigger>
+							
 						</TabsList>
 
 						<TabsContent value="form" className="space-y-4 mt-4">

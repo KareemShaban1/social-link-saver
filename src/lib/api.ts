@@ -222,6 +222,27 @@ class ApiClient {
     return this.request<{ user: any }>('/users/profile');
   }
 
+  // Public stats endpoint (no authentication required)
+  async getPublicStats() {
+    const response = await fetch(`${this.baseUrl}/public/stats`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        error: 'Failed to fetch public stats',
+      }));
+      throw new Error(error.error || error.message || 'Request failed');
+    }
+    return response.json() as Promise<{
+      stats: {
+        totalUsers: number;
+        totalLinks: number;
+        totalCategories: number;
+        totalPlatforms: number;
+        linksLast24Hours: number;
+      };
+      generatedAt: string;
+    }>;
+  }
+
   async updateUserProfile(profile: {
     fullName?: string;
     avatarUrl?: string;

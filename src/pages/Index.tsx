@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,9 +7,11 @@ import { LinkCard } from "@/components/LinkCard";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { PlatformFilter } from "@/components/PlatformFilter";
 import { CategoryManager } from "@/components/CategoryManager";
+import { ModeToggle } from "@/components/mode-toggle";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -19,7 +21,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Search, Bookmark, User, Filter } from "lucide-react";
+import { Search, Bookmark, User, Filter, BarChart3, FolderTree, ChartColumnBig } from "lucide-react";
 import { detectPlatformFromUrl, extractUrlMetadata } from "@/lib/urlMetadata";
 
 interface Link {
@@ -41,6 +43,20 @@ interface Category {
   name: string;
   color: string;
   parent_id: string | null;
+}
+
+interface ApiLink {
+  id: string;
+  title: string;
+  url: string;
+  description?: string;
+  platform: string;
+  categoryId?: string;
+  category_id?: string;
+  category?: {
+    name: string;
+    color: string;
+  };
 }
 
 const Index = () => {
@@ -69,7 +85,7 @@ const Index = () => {
   } | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -86,7 +102,7 @@ const Index = () => {
       const { links: linksData } = await api.getLinks();
       if (linksData) {
         // Transform links to match expected format
-        const transformedLinks = linksData.map((link: any) => ({
+        const transformedLinks = (linksData as ApiLink[]).map((link) => ({
           ...link,
           category_id: link.categoryId ?? link.category_id ?? undefined,
           categories: link.category ? {
@@ -101,13 +117,13 @@ const Index = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (user) {
       fetchData();
     }
-  }, [user]);
+  }, [user, fetchData]);
 
   // Bookmarklet/share flow:
   // Open "Add Link" dialog prefilled from query params like:
@@ -198,6 +214,24 @@ const Index = () => {
     return categoryMatch && platformMatch && searchMatch;
   });
 
+  const stats = useMemo(() => {
+    const categorizedLinks = links.filter((link) => Boolean(link.category_id ?? link.categoryId)).length;
+    const topPlatformEntry = Object.entries(
+      links.reduce<Record<string, number>>((acc, link) => {
+        acc[link.platform] = (acc[link.platform] || 0) + 1;
+        return acc;
+      }, {})
+    ).sort((a, b) => b[1] - a[1])[0];
+
+    return {
+      totalLinks: links.length,
+      visibleLinks: filteredLinks.length,
+      categorizedLinks,
+      categorizedRatio: links.length ? Math.round((categorizedLinks / links.length) * 100) : 0,
+      topPlatform: topPlatformEntry?.[0] ?? "N/A",
+    };
+  }, [links, filteredLinks]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation Header */}
@@ -208,6 +242,7 @@ const Index = () => {
             <h1 className="text-xl font-bold">LinkSaver</h1>
           </div>
           <div className="flex items-center gap-2">
+            <ModeToggle />
             <Link to="/account">
               <Button variant="ghost" size="sm">
                 <User className="h-4 w-4 mr-2" />
@@ -259,6 +294,70 @@ const Index = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8 md:py-12">
+        {!loading && (
+          <div className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Links</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <p className="text-3xl font-bold">{stats.totalLinks}</p>
+                  <Bookmark className="h-5 w-5 text-primary" />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {stats.visibleLinks} currently visible after filtering
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Categorized Coverage</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <p className="text-3xl font-bold">{stats.categorizedRatio}%</p>
+                  <FolderTree className="h-5 w-5 text-primary" />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {stats.categorizedLinks} links assigned to categories
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Top Platform</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <p className="truncate text-2xl font-bold">{stats.topPlatform}</p>
+                  <ChartColumnBig className="h-5 w-5 text-primary" />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Most frequent source in your saved links
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Category Count</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <p className="text-3xl font-bold">{categories.length}</p>
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Total categories available for organizing links
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Filters: mobile = search + sheet; desktop = full bar */}
         <div className="mb-8 space-y-4">
           {/* Mobile: search + Filters button that opens sheet */}

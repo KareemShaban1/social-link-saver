@@ -50,7 +50,7 @@ const Signup = () => {
         description: "Account created successfully!",
       });
 
-      navigate("/");
+      navigate("/app");
     } catch (error: any) {
       toast({
         title: "Signup failed",
