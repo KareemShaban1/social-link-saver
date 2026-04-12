@@ -142,23 +142,31 @@ export const AddLinkDialog = ({
     }
   }, [open]);
 
-  // Find or create category by name
-  const findOrCreateCategory = async (categoryName: string): Promise<string | null> => {
-    if (!categoryName.trim() || !user) return null;
+  /**
+   * Resolve category by name, creating only if missing.
+   * Always re-fetches categories first so we never create a duplicate after submit/blur races
+   * (e.g. Enter submits the form before the name field's blur runs).
+   */
+  const findOrCreateCategory = async (rawName: string): Promise<string | null> => {
+    const trimmed = rawName.trim();
+    if (!trimmed || !user) return null;
 
-    // First, try to find existing category (case-insensitive)
-    const existingCategory = categories.find(
-      c => c.name.toLowerCase() === categoryName.trim().toLowerCase()
-    );
-
-    if (existingCategory) {
-      return existingCategory.id;
+    let list: Category[] = categories;
+    try {
+      const { categories: fresh } = await api.getCategories();
+      if (fresh) list = fresh as Category[];
+    } catch {
+      // use prop list
     }
 
-    // Category doesn't exist, create it
+    const existing = list.find((c) => c.name.toLowerCase() === trimmed.toLowerCase());
+    if (existing) {
+      return existing.id;
+    }
+
     try {
       const { category: newCategory } = await api.createCategory({
-        name: categoryName.trim(),
+        name: trimmed,
         color: getRandomColor(),
       });
 
@@ -166,16 +174,14 @@ export const AddLinkDialog = ({
         throw new Error("Category creation returned no id");
       }
 
-      // Refresh categories if callback provided
       if (onCategoriesChange) {
-        // Wait a bit for the database to update, then refresh
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
         await onCategoriesChange();
       }
 
       toast({
         title: "Category created",
-        description: `Created new category: ${categoryName.trim()}`,
+        description: `Created new category: ${trimmed}`,
       });
 
       return newCategory.id;
@@ -188,6 +194,27 @@ export const AddLinkDialog = ({
         variant: "destructive",
       });
       return null;
+    }
+  };
+
+  /** Blur: only attach to an existing category by name — never create (avoids duplicate with form submit). */
+  const syncCategoryNameToExisting = async () => {
+    const trimmed = categoryName.trim();
+    if (!trimmed) return;
+    try {
+      const { categories: fresh } = await api.getCategories();
+      const list = (fresh ?? categories) as Category[];
+      const hit = list.find((c) => c.name.toLowerCase() === trimmed.toLowerCase());
+      if (hit) {
+        setCategoryId(hit.id);
+        setCategoryName("");
+      }
+    } catch {
+      const hit = categories.find((c) => c.name.toLowerCase() === trimmed.toLowerCase());
+      if (hit) {
+        setCategoryId(hit.id);
+        setCategoryName("");
+      }
     }
   };
 
@@ -543,14 +570,8 @@ export const AddLinkDialog = ({
                   placeholder="Or type new category name"
                   value={categoryName}
                   onChange={(e) => setCategoryName(e.target.value)}
-                  onBlur={async () => {
-                    if (categoryName.trim()) {
-                      const newCategoryId = await findOrCreateCategory(categoryName.trim());
-                      if (newCategoryId) {
-                        setCategoryId(newCategoryId);
-                        setCategoryName("");
-                      }
-                    }
+                  onBlur={() => {
+                    void syncCategoryNameToExisting();
                   }}
                 />
               </div>

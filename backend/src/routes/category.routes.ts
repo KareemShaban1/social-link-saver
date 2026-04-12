@@ -114,6 +114,28 @@ router.post(
         }
       }
 
+      const parentKey = parentId || null;
+      const nameNorm = name.toLowerCase();
+      const siblings = await prisma.category.findMany({
+        where: {
+          userId,
+          parentId: parentKey,
+        },
+        include: {
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+            },
+          },
+        },
+      });
+      const duplicate = siblings.find((c) => c.name.toLowerCase() === nameNorm);
+      if (duplicate) {
+        return res.status(200).json({ category: duplicate });
+      }
+
       const category = await prisma.category.create({
         data: {
           name,

@@ -1,9 +1,22 @@
 // Utility functions to detect and handle video/reel URLs
 
+export type VideoPlatform =
+	| 'youtube'
+	| 'instagram'
+	| 'tiktok'
+	| 'facebook'
+	| 'vimeo'
+	| 'twitter'
+	| 'linkedin'
+	| 'pinterest'
+	| 'unknown';
+
 export interface VideoInfo {
 	isVideo: boolean;
 	embedUrl?: string;
-	platform: 'youtube' | 'instagram' | 'tiktok' | 'facebook' | 'vimeo' | 'unknown';
+	/** Embed URL for Link Preview only (e.g. X post, Pinterest pin). Not used for “Watch video” when isVideo is false. */
+	previewEmbedUrl?: string;
+	platform: VideoPlatform;
 	videoId?: string;
 }
 
@@ -63,11 +76,12 @@ export const detectVideoUrl = (url: string, platformHint?: string): VideoInfo =>
 			// Only mark /reel/ and /tv/ as videos - /p/ posts might be photos
 			const reelMatch = pathname.match(/\/(reel|tv)\/([a-zA-Z0-9_-]+)/i);
 			if (reelMatch) {
+				const kind = reelMatch[1].toLowerCase();
 				const reelId = reelMatch[2];
-				// Instagram embed - use the full URL approach which works better
+				const embedPath = kind === 'reel' ? `reel/${reelId}` : `tv/${reelId}`;
 				return {
 					isVideo: true,
-					embedUrl: `https://www.instagram.com/p/${reelId}/embed/?cr=1&v=14&wp=1080&rd=${encodeURIComponent(url)}`,
+					embedUrl: `https://www.instagram.com/${embedPath}/embed/?cr=1&v=14&wp=1080&rd=${encodeURIComponent(url)}`,
 					platform: 'instagram',
 					videoId: reelId,
 				};
@@ -145,6 +159,57 @@ export const detectVideoUrl = (url: string, platformHint?: string): VideoInfo =>
 			}
 		}
 
+		// X (Twitter) — post embed (includes video tweets when X allows embedding)
+		if (hostname.includes('twitter.com') || hostname.includes('x.com')) {
+			const statusMatch = pathname.match(/\/status\/(\d+)/);
+			if (statusMatch) {
+				const tweetId = statusMatch[1];
+				return {
+					isVideo: false,
+					previewEmbedUrl: `https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=light`,
+					platform: 'twitter',
+					videoId: tweetId,
+				};
+			}
+		}
+
+		// Pinterest pin (video or image pins use the same embed)
+		if (hostname.includes('pinterest.')) {
+			const pinMatch = pathname.match(/\/pin\/(\d+)/);
+			if (pinMatch) {
+				const pinId = pinMatch[1];
+				return {
+					isVideo: false,
+					previewEmbedUrl: `https://www.pinterest.com/pin/${pinId}/embed/`,
+					platform: 'pinterest',
+					videoId: pinId,
+				};
+			}
+		}
+
+		// LinkedIn feed update embed (activity or ugc post URN)
+		if (hostname.includes('linkedin.com')) {
+			let urn: string | null = null;
+			const urnDirect = url.match(/(urn:li:(?:activity|ugcPost):\d+)/);
+			if (urnDirect) {
+				urn = urnDirect[1];
+			}
+			if (!urn) {
+				const activityInPath = pathname.match(/activity[-_:](\d{10,})/i);
+				if (activityInPath) {
+					urn = `urn:li:activity:${activityInPath[1]}`;
+				}
+			}
+			if (urn) {
+				return {
+					isVideo: false,
+					previewEmbedUrl: `https://www.linkedin.com/embed/feed/update/${encodeURIComponent(urn)}`,
+					platform: 'linkedin',
+					videoId: urn,
+				};
+			}
+		}
+
 		// Vimeo
 		if (hostname.includes('vimeo.com')) {
 			const vimeoMatch = pathname.match(/\/(\d+)/);
@@ -182,17 +247,18 @@ export const detectVideoUrl = (url: string, platformHint?: string): VideoInfo =>
 			// Instagram - only mark as video if URL contains /reel/ or /tv/ (video indicators)
 			// Regular /p/ posts might be photos, not videos
 			if (platformLower === 'instagram' || platformLower.includes('instagram')) {
-				// Only mark as video if it's a reel or TV post, or if we can extract ID from reel/tv
 				const reelMatch = url.match(/instagram\.com\/(reel|tv)\/([a-zA-Z0-9_-]+)/i);
 				if (reelMatch && reelMatch[2]) {
+					const k = reelMatch[1].toLowerCase();
+					const id = reelMatch[2];
+					const embedPath = k === 'reel' ? `reel/${id}` : `tv/${id}`;
 					return {
 						isVideo: true,
-						embedUrl: `https://www.instagram.com/p/${reelMatch[2]}/embed/`,
+						embedUrl: `https://www.instagram.com/${embedPath}/embed/`,
 						platform: 'instagram',
-						videoId: reelMatch[2],
+						videoId: id,
 					};
 				}
-				// For /p/ posts, don't assume they're videos - they might be photos
 			}
 
 			// TikTok - only mark as video if URL contains /video/
@@ -234,7 +300,48 @@ export const detectVideoUrl = (url: string, platformHint?: string): VideoInfo =>
 						videoId: vimeoMatch[1],
 					};
 				}
-				// Don't mark as video if no video ID found
+			}
+
+			if (platformLower === 'twitter' || platformLower.includes('twitter') || platformLower === 'x') {
+				const m = url.match(/(?:twitter\.com|x\.com)\/[^/]+\/status\/(\d+)/);
+				if (m?.[1]) {
+					return {
+						isVideo: false,
+						previewEmbedUrl: `https://platform.twitter.com/embed/Tweet.html?id=${m[1]}&theme=light`,
+						platform: 'twitter',
+						videoId: m[1],
+					};
+				}
+			}
+
+			if (platformLower === 'pinterest' || platformLower.includes('pinterest')) {
+				const m = url.match(/pinterest\.\w+\/pin\/(\d+)/);
+				if (m?.[1]) {
+					return {
+						isVideo: false,
+						previewEmbedUrl: `https://www.pinterest.com/pin/${m[1]}/embed/`,
+						platform: 'pinterest',
+						videoId: m[1],
+					};
+				}
+			}
+
+			if (platformLower === 'linkedin' || platformLower.includes('linkedin')) {
+				let urn: string | null = null;
+				const u = url.match(/(urn:li:(?:activity|ugcPost):\d+)/);
+				if (u) urn = u[1];
+				if (!urn) {
+					const a = url.match(/activity[-_:](\d{10,})/i);
+					if (a) urn = `urn:li:activity:${a[1]}`;
+				}
+				if (urn) {
+					return {
+						isVideo: false,
+						previewEmbedUrl: `https://www.linkedin.com/embed/feed/update/${encodeURIComponent(urn)}`,
+						platform: 'linkedin',
+						videoId: urn,
+					};
+				}
 			}
 		}
 
@@ -259,10 +366,13 @@ export const detectVideoUrl = (url: string, platformHint?: string): VideoInfo =>
 export const getVideoPlatformName = (platform: VideoInfo['platform']): string => {
 	const names: Record<VideoInfo['platform'], string> = {
 		youtube: 'YouTube',
-		instagram: 'Instagram Reel',
+		instagram: 'Instagram',
 		tiktok: 'TikTok',
 		facebook: 'Facebook Video',
 		vimeo: 'Vimeo',
+		twitter: 'X (Twitter)',
+		linkedin: 'LinkedIn',
+		pinterest: 'Pinterest',
 		unknown: 'Video',
 	};
 	return names[platform] || 'Video';
