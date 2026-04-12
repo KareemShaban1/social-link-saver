@@ -10,39 +10,43 @@ import {
 const router = express.Router();
 
 /**
- * GET /api/metadata/resolve-facebook-url?url=...
- * Resolves Facebook app share links (/share/r/...) to canonical reel URLs.
- * Lives under /metadata (not /public) because many reverse proxies map `/api/public/*` to static files → 404 on Node.
+ * GET …?url=… — also mounted at `/api/fb-share-resolve` and `/metadata/...` in server.ts for proxy quirks.
  */
-router.get("/resolve-facebook-url", async (req: Request, res: Response) => {
+export async function handleFacebookResolveUrl(req: Request, res: Response): Promise<void> {
 	const raw = req.query.url;
 	if (typeof raw !== "string" || raw.length === 0 || raw.length > 4096) {
-		return res.status(400).json({ error: "Missing or invalid url query parameter" });
+		res.status(400).json({ error: "Missing or invalid url query parameter" });
+		return;
 	}
 
 	let parsed: URL;
 	try {
 		parsed = new URL(raw.trim());
 	} catch {
-		return res.status(400).json({ error: "Invalid URL" });
+		res.status(400).json({ error: "Invalid URL" });
+		return;
 	}
 
 	if (!isAllowedFacebookHost(parsed.hostname)) {
-		return res.status(400).json({ error: "Only Facebook family URLs are allowed" });
+		res.status(400).json({ error: "Only Facebook family URLs are allowed" });
+		return;
 	}
 
 	if (!facebookSharePathNeedsResolve(parsed.pathname)) {
-		return res.json({ url: parsed.toString() });
+		res.json({ url: parsed.toString() });
+		return;
 	}
 
 	try {
 		const resolved = await resolveFacebookShareToCanonical(parsed.toString());
-		return res.json({ url: resolved });
+		res.json({ url: resolved });
 	} catch (e) {
 		console.error("resolve-facebook-url:", e);
-		return res.json({ url: parsed.toString() });
+		res.json({ url: parsed.toString() });
 	}
-});
+}
+
+router.get("/resolve-facebook-url", handleFacebookResolveUrl);
 
 /**
  * POST /api/metadata/extract

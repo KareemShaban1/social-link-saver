@@ -6,7 +6,7 @@ import authRoutes from './routes/auth.routes.js';
 import linkRoutes from './routes/link.routes.js';
 import categoryRoutes from './routes/category.routes.js';
 import userRoutes from './routes/user.routes.js';
-import metadataRoutes from './routes/metadata.routes.js';
+import metadataRoutes, { handleFacebookResolveUrl } from './routes/metadata.routes.js';
 import publicRoutes from './routes/public.routes.js';
 
 dotenv.config();
@@ -53,6 +53,11 @@ app.use('/api/links', linkRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/metadata', metadataRoutes);
+/** When nginx uses `proxy_pass http://127.0.0.1:PORT/;` under `location /api/`, the `/api` prefix is stripped — these paths still hit Node. */
+app.use('/metadata', metadataRoutes);
+/** Short aliases (same handler) if a host blocks or mishandles longer `/api/metadata/...` paths. */
+app.get('/api/fb-share-resolve', handleFacebookResolveUrl);
+app.get('/fb-share-resolve', handleFacebookResolveUrl);
 app.use('/api/public', publicRoutes);
 
 // Error handling

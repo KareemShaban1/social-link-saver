@@ -149,20 +149,25 @@ class ApiClient {
 
 	/** Public: turn Facebook `/share/r/...` (etc.) into the canonical `.../reel/...` URL for embeds. */
 	async resolveFacebookShareUrl(url: string): Promise<{ url: string }> {
-		const qs = new URLSearchParams({ url });
+		const qs = new URLSearchParams({ url }).toString();
 		const headers: HeadersInit = {};
 		if (this.token) {
 			headers.Authorization = `Bearer ${this.token}`;
 		}
-		const response = await fetch(`${this.baseUrl}/metadata/resolve-facebook-url?${qs.toString()}`, {
-			method: "GET",
-			headers,
-		});
-		if (!response.ok) {
-			const err = await response.json().catch(() => ({ error: "Resolve failed" }));
-			throw new Error(err.error || err.message || "Resolve failed");
+		const candidates = [
+			`${this.baseUrl}/metadata/resolve-facebook-url?${qs}`,
+			`${this.baseUrl}/fb-share-resolve?${qs}`,
+		];
+		let lastStatus = 0;
+		for (const fullUrl of candidates) {
+			const response = await fetch(fullUrl, { method: "GET", headers });
+			lastStatus = response.status;
+			if (response.ok) {
+				return response.json() as Promise<{ url: string }>;
+			}
 		}
-		return response.json() as Promise<{ url: string }>;
+		const err = { error: `Resolve failed (${lastStatus})` };
+		throw new Error(err.error);
 	}
 
 	// Metadata extraction endpoint - uses AI to generate title and description
