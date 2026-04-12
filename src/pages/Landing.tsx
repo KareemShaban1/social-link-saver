@@ -137,66 +137,96 @@ const Landing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-2">
-            <img src="/pwa-192x192.svg" alt="LinkSaver icon" className="h-6 w-6 rounded-md" />
-            <span className="text-lg font-semibold">LinkSaver</span>
+    <div className="min-h-screen bg-background pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <div className="container mx-auto flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-4">
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-3 sm:justify-start sm:gap-2">
+            <Link to="/" className="flex min-w-0 items-center gap-2 touch-manipulation">
+              <img src="/pwa-192x192.svg" alt="" className="h-8 w-8 shrink-0 rounded-lg sm:h-7 sm:w-7" />
+              <span className="truncate text-base font-semibold sm:text-lg">LinkSaver</span>
+            </Link>
+            <div className="shrink-0 sm:hidden">
+              <ModeToggle />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          {/* <div className="flex flex-wrap items-center justify-end gap-2 sm:min-w-0 sm:flex-nowrap sm:gap-2">
             {!isInstalled && deferredPrompt && (
-              <Button size="sm" variant="outline" onClick={handleInstallApp} disabled={installing}>
-                <Download className="mr-2 h-4 w-4" />
-                {installing ? "Installing..." : "Install App"}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="min-h-10 touch-manipulation gap-1.5 px-3 sm:min-h-9"
+                onClick={handleInstallApp}
+                disabled={installing}
+                aria-label={installing ? "Installing application" : "Install application"}
+              >
+                <Download className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">{installing ? "Installing…" : "Install app"}</span>
+                <span className="sm:hidden">{installing ? "…" : "Install"}</span>
               </Button>
             )}
             {user ? (
               <>
-                <Link to="/app">
-                  <Button size="sm">Open Dashboard</Button>
+                <Link to="/app" className="min-w-0 shrink-0">
+                  <Button type="button" size="sm" className="min-h-10 w-full min-w-[8.5rem] touch-manipulation sm:min-h-9 sm:w-auto">
+                    <span className="hidden sm:inline">Open Dashboard</span>
+                    <span className="sm:hidden">Dashboard</span>
+                  </Button>
                 </Link>
-                <Link to="/account">
-                  <Button size="sm" variant="outline">
+                <Link to="/account" className="shrink-0">
+                  <Button type="button" size="sm" variant="outline" className="min-h-10 touch-manipulation sm:min-h-9">
                     Account
                   </Button>
                 </Link>
               </>
             ) : (
               <>
-                <Link to="/login">
-                  <Button size="sm" variant="ghost">
+                <Link to="/login" className="shrink-0">
+                  <Button type="button" size="sm" variant="ghost" className="min-h-10 touch-manipulation sm:min-h-9">
                     Sign In
                   </Button>
                 </Link>
-                <Link to="/signup">
-                  <Button size="sm">Get Started</Button>
+                <Link to="/signup" className="min-w-0 shrink-0">
+                  <Button type="button" size="sm" className="min-h-10 touch-manipulation sm:min-h-9">
+                    Get Started
+                  </Button>
                 </Link>
               </>
             )}
-            <ModeToggle />
-          </div>
+            <div className="hidden sm:block">
+              <ModeToggle />
+            </div>
+          </div> */}
         </div>
       </header>
 
       <main>
-        <section className="relative overflow-hidden border-b bg-[radial-gradient(1200px_circle_at_20%_20%,hsl(var(--primary)/0.20),transparent_55%),radial-gradient(1000px_circle_at_85%_25%,hsl(var(--accent)/0.18),transparent_50%)]">
-          <div className="container mx-auto px-4 py-20 md:py-28">
-            <div className="max-w-3xl space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full border bg-background/80 px-3 py-1 text-sm text-muted-foreground">
-                <Sparkles className="h-4 w-4 text-primary" />
-                Professional social link organization
+        <section className="relative overflow-hidden border-b bg-[radial-gradient(900px_circle_at_20%_15%,hsl(var(--primary)/0.22),transparent_55%),radial-gradient(800px_circle_at_90%_20%,hsl(var(--accent)/0.16),transparent_48%)] md:bg-[radial-gradient(1200px_circle_at_20%_20%,hsl(var(--primary)/0.20),transparent_55%),radial-gradient(1000px_circle_at_85%_25%,hsl(var(--accent)/0.18),transparent_50%)]">
+          <div className="container mx-auto px-4 py-12 sm:py-16 md:py-28">
+            <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
+              <div className="inline-flex max-w-full items-center gap-2 rounded-full border bg-background/85 px-3 py-1.5 text-left text-xs text-muted-foreground shadow-sm backdrop-blur sm:text-sm">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary sm:h-4 sm:w-4" />
+                <span className="leading-snug">Professional social link organization</span>
               </div>
-              <h1 className="text-4xl font-bold tracking-tight md:text-6xl">
+              <h1 className="text-[1.65rem] font-bold leading-[1.15] tracking-tight text-foreground sm:text-4xl sm:leading-tight md:text-6xl md:leading-[1.05]">
                 Organize every social link in one smart workspace.
               </h1>
-              <p className="text-lg text-muted-foreground md:text-xl">{heroSubtitle}</p>
-              <div className="flex flex-wrap gap-3">
-                <Link to={user ? "/app" : "/signup"}>
-                  <Button size="lg">{user ? "Go to Dashboard" : "Start Free"}</Button>
+              <p className="text-base leading-relaxed text-muted-foreground sm:text-lg md:text-xl">
+                {heroSubtitle}
+              </p>
+              <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap sm:gap-3 sm:pt-0">
+                <Link to={user ? "/app" : "/signup"} className="w-full sm:w-auto">
+                  <Button type="button" size="lg" className="h-12 w-full touch-manipulation sm:h-11 sm:min-w-[10rem]">
+                    {user ? "Go to Dashboard" : "Start Free"}
+                  </Button>
                 </Link>
-                <Link to={user ? "/account" : "/login"}>
-                  <Button size="lg" variant="outline">
+                <Link to={user ? "/account" : "/login"} className="w-full sm:w-auto">
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="outline"
+                    className="h-12 w-full touch-manipulation sm:h-11 sm:min-w-[8rem]"
+                  >
                     {user ? "Manage Account" : "Sign In"}
                   </Button>
                 </Link>
@@ -205,7 +235,7 @@ const Landing = () => {
           </div>
         </section>
 
-        <section className="container mx-auto px-4 py-12 md:py-16">
+            <section className="container mx-auto px-4 py-12 md:py-16">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Card>
               <CardHeader className="pb-3">
@@ -247,46 +277,47 @@ const Landing = () => {
               </CardContent>
             </Card>
           </div>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+          {/* <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
             <span>
               New links in last 24 hours:{" "}
               <span className="font-semibold text-foreground">{publicStats.linksLast24Hours}</span>
             </span>
             {lastUpdated && <span>Last updated {new Date(lastUpdated).toLocaleTimeString()}</span>}
-          </div>
+          </div> */}
         </section>
 
-        <section className="container mx-auto px-4 pb-16">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-border/80">
-              <CardContent className="pt-6">
+
+        <section className="container mx-auto px-4 pb-12 sm:pb-16">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
+            <Card className="border-border/80 shadow-sm">
+              <CardContent className="p-4 sm:p-6 sm:pt-6">
                 <div className="mb-3 inline-flex rounded-lg bg-primary/10 p-2 text-primary">
                   <Bookmark className="h-5 w-5" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold">Fast Capture</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="mb-1.5 text-base font-semibold sm:mb-2 sm:text-lg">Fast Capture</h3>
+                <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
                   Save social links in seconds with metadata-ready inputs and cleaner titles.
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-border/80">
-              <CardContent className="pt-6">
+            <Card className="border-border/80 shadow-sm">
+              <CardContent className="p-4 sm:p-6 sm:pt-6">
                 <div className="mb-3 inline-flex rounded-lg bg-primary/10 p-2 text-primary">
                   <FolderTree className="h-5 w-5" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold">Nested Categories</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="mb-1.5 text-base font-semibold sm:mb-2 sm:text-lg">Nested Categories</h3>
+                <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
                   Build clear category trees so large link collections stay easy to browse.
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-border/80">
-              <CardContent className="pt-6">
+            <Card className="border-border/80 shadow-sm sm:col-span-2 md:col-span-1">
+              <CardContent className="p-4 sm:p-6 sm:pt-6">
                 <div className="mb-3 inline-flex rounded-lg bg-primary/10 p-2 text-primary">
                   <Layers3 className="h-5 w-5" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold">Smart Filtering</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="mb-1.5 text-base font-semibold sm:mb-2 sm:text-lg">Smart Filtering</h3>
+                <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
                   Filter by platform, category, and search terms to locate links instantly.
                 </p>
               </CardContent>
