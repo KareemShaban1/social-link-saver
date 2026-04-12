@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogEmbedContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 import { VideoInfo, getVideoPlatformName } from "@/lib/videoUtils";
@@ -17,10 +17,10 @@ export const VideoPlayer = ({ open, onOpenChange, videoInfo, url, title }: Video
   const platformName = getVideoPlatformName(videoInfo.platform);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+    <Dialog modal={false} open={open} onOpenChange={onOpenChange}>
+      <DialogEmbedContent
         className={cn(
-          "flex h-[100dvh] max-h-[100dvh] w-full max-w-none flex-col gap-0 overflow-hidden p-0",
+          "flex h-[100dvh] max-h-[100dvh] w-full max-w-none flex-col gap-0 min-h-0 overflow-x-hidden p-0",
           "left-0 top-0 translate-x-0 translate-y-0 rounded-none border-0 sm:h-auto sm:max-h-[90vh] sm:max-w-4xl sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:border",
           "pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-0"
         )}
@@ -49,7 +49,7 @@ export const VideoPlayer = ({ open, onOpenChange, videoInfo, url, title }: Video
             </Button>
           </div>
         </div>
-      </DialogContent>
+      </DialogEmbedContent>
     </Dialog>
   );
 };

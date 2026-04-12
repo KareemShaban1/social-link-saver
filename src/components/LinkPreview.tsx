@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogEmbedContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, AlertCircle, Copy, Check, Globe } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -41,10 +41,10 @@ export const LinkPreview = ({ open, onOpenChange, url, title, description, platf
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent
+		<Dialog modal={false} open={open} onOpenChange={onOpenChange}>
+			<DialogEmbedContent
 				className={cn(
-					"flex max-h-[min(92dvh,900px)] w-full max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:max-h-[90vh]",
+					"flex max-h-[min(92dvh,900px)] w-full max-w-4xl flex-col gap-0 min-h-0 overflow-x-hidden p-0 sm:max-h-[90vh]",
 					"pt-[max(0.5rem,env(safe-area-inset-top))] sm:pt-6"
 				)}
 			>
@@ -85,7 +85,7 @@ export const LinkPreview = ({ open, onOpenChange, url, title, description, platf
 							</Alert>
 							<div
 								className={cn(
-									"relative w-full overflow-hidden rounded-lg border bg-muted/30",
+									"relative w-full rounded-lg border bg-muted/30",
 									"min-h-[min(45vh,320px)] sm:min-h-[360px]"
 								)}
 							>
@@ -157,7 +157,7 @@ export const LinkPreview = ({ open, onOpenChange, url, title, description, platf
 						</Button>
 					</div>
 				</div>
-			</DialogContent>
+			</DialogEmbedContent>
 		</Dialog>
 	);
 };

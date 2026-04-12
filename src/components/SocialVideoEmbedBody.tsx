@@ -1,8 +1,19 @@
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, AlertCircle } from "lucide-react";
 import { VideoInfo, getVideoPlatformName } from "@/lib/videoUtils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+
+/**
+ * Radix Dialog + `overflow-hidden` ancestors can steal hit-testing for nested iframes (Facebook / IG / etc.).
+ * Promote the embed to its own composited layer and keep touch events on the player.
+ */
+function InteractiveEmbedSurface({ children }: { children: ReactNode }) {
+	return (
+		<div className="relative z-[2] isolate touch-auto [transform:translateZ(0)]">{children}</div>
+	);
+}
 
 export interface SocialVideoEmbedBodyProps {
 	videoInfo: VideoInfo;
@@ -24,30 +35,7 @@ const tallSocialEmbedClass =
  */
 export function SocialVideoEmbedBody({ videoInfo, url, title }: SocialVideoEmbedBodyProps) {
 	const platformName = getVideoPlatformName(videoInfo.platform);
-	const facebookBlock = videoInfo.isVideo && videoInfo.platform === "facebook";
-	const src = facebookBlock ? undefined : (videoInfo.embedUrl ?? videoInfo.previewEmbedUrl);
-
-	if (facebookBlock) {
-		return (
-			<div className="flex flex-col items-center justify-center space-y-4 px-2 py-4 text-center sm:min-h-[400px] sm:space-y-6 sm:p-8">
-				<Alert variant="destructive" className="w-full max-w-md text-left">
-					<AlertCircle className="h-4 w-4 shrink-0" />
-					<AlertDescription className="text-xs leading-relaxed sm:text-sm">
-						<strong>Facebook videos usually cannot play inside this app.</strong>
-						<span className="mt-2 block sm:mt-0">Open the original link to watch reels and clips.</span>
-					</AlertDescription>
-				</Alert>
-				<div className="flex w-full max-w-md flex-col items-center space-y-3">
-					<Button size="lg" asChild className="min-h-12 w-full touch-manipulation sm:min-h-11 sm:w-auto">
-						<a href={url} target="_blank" rel="noopener noreferrer">
-							<ExternalLink className="mr-2 h-4 w-4" />
-							Watch on Facebook
-						</a>
-					</Button>
-				</div>
-			</div>
-		);
-	}
+	const src = videoInfo.embedUrl ?? videoInfo.previewEmbedUrl;
 
 	if (!src) {
 		return (
@@ -65,6 +53,31 @@ export function SocialVideoEmbedBody({ videoInfo, url, title }: SocialVideoEmbed
 		);
 	}
 
+	if (videoInfo.platform === "facebook") {
+		return (
+			<div className="flex min-h-0 flex-col items-stretch space-y-2">
+				<Alert className="w-full py-2">
+					<AlertCircle className="h-4 w-4 shrink-0" />
+					<AlertDescription className="text-xs leading-snug sm:text-sm">
+						Reels and videos use Facebook&apos;s embed player below. It may ask you to sign in or stay blank if this browser
+						blocks third-party cookies — then use <span className="font-medium">Open original</span> /{" "}
+						<span className="font-medium">Open in new tab</span>.
+					</AlertDescription>
+				</Alert>
+				{/* No sandbox: Facebook video.php often fails inside a strict sandbox; src is only our video.php URL. */}
+				<InteractiveEmbedSurface>
+					<iframe
+						src={src}
+						className={cn("pointer-events-auto shrink-0 rounded-lg border-0", embedStackClass)}
+						allow="autoplay; clipboard-write; encrypted-media; web-share; picture-in-picture"
+						allowFullScreen
+						title={title}
+					/>
+				</InteractiveEmbedSurface>
+			</div>
+		);
+	}
+
 	if (videoInfo.platform === "instagram") {
 		return (
 			<div className="flex min-h-0 flex-col items-stretch justify-center space-y-3 sm:space-y-4">
@@ -75,14 +88,16 @@ export function SocialVideoEmbedBody({ videoInfo, url, title }: SocialVideoEmbed
 						<span className="font-medium">Open in new tab</span>.
 					</AlertDescription>
 				</Alert>
-				<iframe
-					src={src}
-					className={cn("shrink-0 rounded-lg border-0", embedStackClass)}
-					allow="encrypted-media"
-					title={title}
-					scrolling="no"
-					sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-				/>
+				<InteractiveEmbedSurface>
+					<iframe
+						src={src}
+						className={cn("pointer-events-auto shrink-0 rounded-lg border-0", embedStackClass)}
+						allow="encrypted-media"
+						title={title}
+						scrolling="no"
+						sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+					/>
+				</InteractiveEmbedSurface>
 			</div>
 		);
 	}
@@ -114,12 +129,14 @@ export function SocialVideoEmbedBody({ videoInfo, url, title }: SocialVideoEmbed
 						embedding works.
 					</AlertDescription>
 				</Alert>
-				<iframe
-					src={src}
-					className={cn("shrink-0 rounded-lg border-0", tallSocialEmbedClass)}
-					title={title}
-					sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-				/>
+				<InteractiveEmbedSurface>
+					<iframe
+						src={src}
+						className={cn("pointer-events-auto shrink-0 rounded-lg border-0", tallSocialEmbedClass)}
+						title={title}
+						sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+					/>
+				</InteractiveEmbedSurface>
 			</div>
 		);
 	}
@@ -152,21 +169,23 @@ export function SocialVideoEmbedBody({ videoInfo, url, title }: SocialVideoEmbed
 						Pinterest pins (including video pins) load in the embed below when Pinterest allows it.
 					</AlertDescription>
 				</Alert>
-				<iframe
-					src={src}
-					className={cn("shrink-0 rounded-lg border-0", tallSocialEmbedClass)}
-					title={title}
-					sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-				/>
+				<InteractiveEmbedSurface>
+					<iframe
+						src={src}
+						className={cn("pointer-events-auto shrink-0 rounded-lg border-0", tallSocialEmbedClass)}
+						title={title}
+						sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+					/>
+				</InteractiveEmbedSurface>
 			</div>
 		);
 	}
 
 	return (
-		<div className="relative aspect-video w-full max-h-[55dvh] overflow-hidden rounded-lg bg-black sm:max-h-none">
+		<div className="relative z-[2] isolate aspect-video w-full max-h-[55dvh] touch-auto overflow-hidden rounded-lg bg-black [transform:translateZ(0)] sm:max-h-none">
 			<iframe
 				src={src}
-				className="absolute left-0 top-0 h-full w-full border-0"
+				className="pointer-events-auto absolute left-0 top-0 h-full w-full border-0"
 				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
 				allowFullScreen
 				title={title}

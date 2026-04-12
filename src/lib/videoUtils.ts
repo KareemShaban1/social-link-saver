@@ -20,6 +20,20 @@ export interface VideoInfo {
 	videoId?: string;
 }
 
+/** Canonical host for Facebook’s video embed plugin (`web.` / `m.` → `www.`). */
+export function normalizeFacebookVideoPageUrl(url: string): string {
+	try {
+		const u = new URL(url);
+		const h = u.hostname.toLowerCase();
+		if (h === "web.facebook.com" || h === "m.facebook.com" || h === "mbasic.facebook.com") {
+			u.hostname = "www.facebook.com";
+		}
+		return u.toString();
+	} catch {
+		return url;
+	}
+}
+
 /**
  * Detects if a URL is a video/reel and extracts embed information
  * @param url - The URL to check
@@ -150,9 +164,10 @@ export const detectVideoUrl = (url: string, platformHint?: string): VideoInfo =>
 				hostname.includes('fb.watch');
 
 			if (isVideoUrl) {
+				const hrefForPlugin = normalizeFacebookVideoPageUrl(url);
 				return {
 					isVideo: true,
-					embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&width=500`,
+					embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(hrefForPlugin)}&show_text=false&width=500`,
 					platform: 'facebook',
 					videoId: videoId || undefined,
 				};
@@ -280,9 +295,10 @@ export const detectVideoUrl = (url: string, platformHint?: string): VideoInfo =>
 			if (platformLower === 'facebook' || platformLower.includes('facebook')) {
 				// Only mark as video if URL has /videos/, /reel/, /watch, or fb.watch
 				if (url.includes('/videos/') || url.includes('/reel/') || url.includes('/watch') || url.includes('fb.watch')) {
+					const hrefForPlugin = normalizeFacebookVideoPageUrl(url);
 					return {
 						isVideo: true,
-						embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&width=500`,
+						embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(hrefForPlugin)}&show_text=false&width=500`,
 						platform: 'facebook',
 					};
 				}

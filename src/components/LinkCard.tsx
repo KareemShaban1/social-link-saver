@@ -248,8 +248,9 @@ export const LinkCard = ({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="gap-2"
-                  onSelect={() => {
-                    setLinkPreviewOpen(true);
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    window.setTimeout(() => setLinkPreviewOpen(true), 0);
                   }}
                 >
                   <Eye className="h-4 w-4 shrink-0" />
@@ -258,8 +259,9 @@ export const LinkCard = ({
                 {videoInfo.isVideo && (
                   <DropdownMenuItem
                     className="gap-2"
-                    onSelect={() => {
-                      setVideoPlayerOpen(true);
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      window.setTimeout(() => setVideoPlayerOpen(true), 0);
                     }}
                   >
                     <Play className="h-4 w-4 shrink-0" />
@@ -319,7 +321,18 @@ export const LinkCard = ({
             <span className="truncate">{getCategoryDisplay()}</span>
           </span>
         )}
-
+        {videoInfo.isVideo && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-9 w-full gap-2 touch-manipulation sm:h-8 sm:w-auto sm:self-start"
+            onClick={() => setVideoPlayerOpen(true)}
+          >
+            <Play className="h-4 w-4 shrink-0" aria-hidden />
+            Watch video
+          </Button>
+        )}
       </div>
 
       {videoInfo.isVideo && (
