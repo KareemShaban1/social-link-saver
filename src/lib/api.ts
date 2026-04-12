@@ -154,7 +154,7 @@ class ApiClient {
 		if (this.token) {
 			headers.Authorization = `Bearer ${this.token}`;
 		}
-		const response = await fetch(`${this.baseUrl}/public/resolve-facebook-url?${qs.toString()}`, {
+		const response = await fetch(`${this.baseUrl}/metadata/resolve-facebook-url?${qs.toString()}`, {
 			method: "GET",
 			headers,
 		});
