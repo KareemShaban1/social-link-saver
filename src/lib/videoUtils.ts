@@ -34,6 +34,19 @@ export function normalizeFacebookVideoPageUrl(url: string): string {
 	}
 }
 
+/** App/mobile short share links that must be resolved server-side to a canonical reel/video URL. */
+export function needsFacebookShareResolution(url: string): boolean {
+	try {
+		const u = new URL(url.trim());
+		const h = u.hostname.toLowerCase();
+		if (!h.includes("facebook.com") && !h.includes("fb.com") && !h.includes("fb.watch")) return false;
+		const p = u.pathname;
+		return /\/share\/r\//i.test(p) || /\/share\/reel\//i.test(p) || /\/share\/v\//i.test(p);
+	} catch {
+		return false;
+	}
+}
+
 /**
  * Detects if a URL is a video/reel and extracts embed information
  * @param url - The URL to check

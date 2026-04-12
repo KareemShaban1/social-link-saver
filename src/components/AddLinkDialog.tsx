@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { extractUrlMetadata, detectPlatformFromUrl } from "@/lib/urlMetadata";
+import { needsFacebookShareResolution } from "@/lib/videoUtils";
 
 interface Category {
   id: string;
@@ -374,6 +375,19 @@ export const AddLinkDialog = ({
 
     setLoading(true);
 
+    let submitUrl = url.trim();
+    if (needsFacebookShareResolution(submitUrl)) {
+      try {
+        const { url: resolved } = await api.resolveFacebookShareUrl(submitUrl);
+        if (resolved && resolved !== submitUrl) {
+          submitUrl = resolved;
+          setUrl(resolved);
+        }
+      } catch {
+        /* keep original share URL */
+      }
+    }
+
     // If category name is provided but no category ID, create the category
     let finalCategoryId = categoryId;
     if (categoryName.trim() && !categoryId) {
@@ -388,7 +402,7 @@ export const AddLinkDialog = ({
         // Update existing link
         await api.updateLink(linkToEdit.id, {
           title,
-          url,
+          url: submitUrl,
           description,
           platform,
           categoryId: finalCategoryId || undefined,
@@ -402,7 +416,7 @@ export const AddLinkDialog = ({
         // Create new link
         await api.createLink({
           title,
-          url,
+          url: submitUrl,
           description,
           platform,
           categoryId: finalCategoryId || undefined,

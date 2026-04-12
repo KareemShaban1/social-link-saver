@@ -18,8 +18,8 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { useMemo, useState } from "react";
-import { detectVideoUrl } from "@/lib/videoUtils";
+import { useEffect, useMemo, useState } from "react";
+import { detectVideoUrl, needsFacebookShareResolution } from "@/lib/videoUtils";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { LinkPreview } from "@/components/LinkPreview";
 import {
@@ -135,9 +135,30 @@ export const LinkCard = ({
   const { toast } = useToast();
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [linkPreviewOpen, setLinkPreviewOpen] = useState(false);
-  const videoInfo = detectVideoUrl(url, platform);
+  const [effectiveUrl, setEffectiveUrl] = useState(url);
+
+  useEffect(() => {
+    setEffectiveUrl(url);
+    if (!needsFacebookShareResolution(url)) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { url: resolved } = await api.resolveFacebookShareUrl(url);
+        if (!cancelled && typeof resolved === "string" && resolved.length > 0) {
+          setEffectiveUrl(resolved);
+        }
+      } catch {
+        /* keep stored url */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  const videoInfo = useMemo(() => detectVideoUrl(effectiveUrl, platform), [effectiveUrl, platform]);
   const platformTheme = useMemo(() => getPlatformColor(platform), [platform]);
-  const hostname = useMemo(() => safeHostname(url), [url]);
+  const hostname = useMemo(() => safeHostname(effectiveUrl), [effectiveUrl]);
 
   const getCategoryDisplay = () => {
     if (!category) return null;
@@ -340,7 +361,7 @@ export const LinkCard = ({
           open={videoPlayerOpen}
           onOpenChange={setVideoPlayerOpen}
           videoInfo={videoInfo}
-          url={url}
+          url={effectiveUrl}
           title={title}
         />
       )}
@@ -348,7 +369,7 @@ export const LinkCard = ({
       <LinkPreview
         open={linkPreviewOpen}
         onOpenChange={setLinkPreviewOpen}
-        url={url}
+        url={effectiveUrl}
         title={title}
         description={description}
         platform={platform}

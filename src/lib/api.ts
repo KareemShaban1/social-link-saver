@@ -147,6 +147,24 @@ class ApiClient {
     });
   }
 
+	/** Public: turn Facebook `/share/r/...` (etc.) into the canonical `.../reel/...` URL for embeds. */
+	async resolveFacebookShareUrl(url: string): Promise<{ url: string }> {
+		const qs = new URLSearchParams({ url });
+		const headers: HeadersInit = {};
+		if (this.token) {
+			headers.Authorization = `Bearer ${this.token}`;
+		}
+		const response = await fetch(`${this.baseUrl}/public/resolve-facebook-url?${qs.toString()}`, {
+			method: "GET",
+			headers,
+		});
+		if (!response.ok) {
+			const err = await response.json().catch(() => ({ error: "Resolve failed" }));
+			throw new Error(err.error || err.message || "Resolve failed");
+		}
+		return response.json() as Promise<{ url: string }>;
+	}
+
 	// Metadata extraction endpoint - uses AI to generate title and description
 	async extractMetadata(url: string, content?: string) {
 		// This endpoint doesn't require authentication
