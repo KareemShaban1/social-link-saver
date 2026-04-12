@@ -1,12 +1,35 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Trash2, Pencil, Facebook, Instagram, Twitter, Linkedin, Youtube, Video, ImageIcon, Circle, Play, Eye } from "lucide-react";
+import {
+  ExternalLink,
+  Trash2,
+  Pencil,
+  Facebook,
+  Instagram,
+  Twitter,
+  Linkedin,
+  Youtube,
+  Video,
+  ImageIcon,
+  Circle,
+  Play,
+  Eye,
+  MoreVertical,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { detectVideoUrl } from "@/lib/videoUtils";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { LinkPreview } from "@/components/LinkPreview";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface Category {
   id: string;
@@ -37,74 +60,92 @@ interface LinkCardProps {
   }) => void;
 }
 
-// Get platform brand color
 const getPlatformColor = (platform: string): { bg: string; bgGradient?: string; icon: string } => {
-	const platformLower = platform.toLowerCase();
+  const platformLower = platform.toLowerCase();
 
-	switch (platformLower) {
-		case "facebook":
-			return { bg: "#1877F215", icon: "#1877F2" }; // Facebook blue
-		case "instagram":
-			return {
-				bg: "#E4405F15",
-				bgGradient: "linear-gradient(135deg, rgba(131, 58, 180, 0.1) 0%, rgba(253, 29, 29, 0.1) 50%, rgba(252, 176, 69, 0.1) 100%)",
-				icon: "#E4405F"
-			}; // Instagram gradient
-		case "twitter":
-		case "x":
-			return { bg: "#00000015", icon: "#000000" }; // Twitter/X black
-		case "linkedin":
-			return { bg: "#0A66C215", icon: "#0A66C2" }; // LinkedIn blue
-		case "youtube":
-			return { bg: "#FF000015", icon: "#FF0000" }; // YouTube red
-		case "tiktok":
-			return { bg: "#00000015", icon: "#000000" }; // TikTok black
-		case "pinterest":
-			return { bg: "#BD081C15", icon: "#BD081C" }; // Pinterest red
-		case "reddit":
-			return { bg: "#FF450015", icon: "#FF4500" }; // Reddit orange
-		default:
-			return { bg: "hsl(var(--primary) / 0.1)", icon: "hsl(var(--primary))" }; // Default primary color
-	}
-};
-
-const getPlatformIcon = (platform: string) => {
-  const iconClass = "h-5 w-5";
-  switch (platform.toLowerCase()) {
+  switch (platformLower) {
     case "facebook":
-      return <Facebook className={iconClass} />;
+      return { bg: "#1877F215", icon: "#1877F2" };
     case "instagram":
-      return <Instagram className={iconClass} />;
+      return {
+        bg: "#E4405F15",
+        bgGradient:
+          "linear-gradient(135deg, rgba(131, 58, 180, 0.1) 0%, rgba(253, 29, 29, 0.1) 50%, rgba(252, 176, 69, 0.1) 100%)",
+        icon: "#E4405F",
+      };
     case "twitter":
-	  case "x":
-      return <Twitter className={iconClass} />;
+    case "x":
+      return { bg: "#00000015", icon: "#000000" };
     case "linkedin":
-      return <Linkedin className={iconClass} />;
+      return { bg: "#0A66C215", icon: "#0A66C2" };
     case "youtube":
-      return <Youtube className={iconClass} />;
+      return { bg: "#FF000015", icon: "#FF0000" };
     case "tiktok":
-      return <Video className={iconClass} />;
+      return { bg: "#00000015", icon: "#000000" };
     case "pinterest":
-      return <ImageIcon className={iconClass} />;
+      return { bg: "#BD081C15", icon: "#BD081C" };
+    case "reddit":
+      return { bg: "#FF450015", icon: "#FF4500" };
     default:
-      return <Circle className={iconClass} />;
+      return { bg: "hsl(var(--primary) / 0.1)", icon: "hsl(var(--primary))" };
   }
 };
 
-export const LinkCard = ({ id, title, url, description, platform, category, categories, onDelete, onEdit }: LinkCardProps) => {
+const getPlatformIcon = (platform: string, className: string) => {
+  switch (platform.toLowerCase()) {
+    case "facebook":
+      return <Facebook className={className} />;
+    case "instagram":
+      return <Instagram className={className} />;
+    case "twitter":
+    case "x":
+      return <Twitter className={className} />;
+    case "linkedin":
+      return <Linkedin className={className} />;
+    case "youtube":
+      return <Youtube className={className} />;
+    case "tiktok":
+      return <Video className={className} />;
+    case "pinterest":
+      return <ImageIcon className={className} />;
+    default:
+      return <Circle className={className} />;
+  }
+};
+
+function safeHostname(linkUrl: string): string | null {
+  try {
+    return new URL(linkUrl).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+export const LinkCard = ({
+  id,
+  title,
+  url,
+  description,
+  platform,
+  category,
+  categories,
+  onDelete,
+  onEdit,
+}: LinkCardProps) => {
   const { toast } = useToast();
-	const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
-	const [linkPreviewOpen, setLinkPreviewOpen] = useState(false);
-	const videoInfo = detectVideoUrl(url, platform);
+  const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
+  const [linkPreviewOpen, setLinkPreviewOpen] = useState(false);
+  const videoInfo = detectVideoUrl(url, platform);
+  const platformTheme = useMemo(() => getPlatformColor(platform), [platform]);
+  const hostname = useMemo(() => safeHostname(url), [url]);
 
   const getCategoryDisplay = () => {
     if (!category) return null;
-    
-    // Find the category in the full list to check if it has a parent
-    const fullCategory = categories.find(c => c.name === category.name);
+
+    const fullCategory = categories.find((c) => c.name === category.name);
     if (fullCategory && fullCategory.parent_id) {
-      const parent = categories.find(c => c.id === fullCategory.parent_id);
-      return parent ? `${parent.name} > ${category.name}` : category.name;
+      const parent = categories.find((c) => c.id === fullCategory.parent_id);
+      return parent ? `${parent.name} › ${category.name}` : category.name;
     }
     return category.name;
   };
@@ -117,10 +158,11 @@ export const LinkCard = ({ id, title, url, description, platform, category, cate
         description: "Link removed successfully",
       });
       onDelete();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to delete link";
       toast({
         title: "Error",
-        description: error.message || "Failed to delete link",
+        description: message,
         variant: "destructive",
       });
     }
@@ -128,7 +170,7 @@ export const LinkCard = ({ id, title, url, description, platform, category, cate
 
   const handleEdit = () => {
     if (onEdit) {
-      const categoryId = categories.find(c => c.name === category?.name)?.id;
+      const categoryId = categories.find((c) => c.name === category?.name)?.id;
       onEdit({
         id,
         title,
@@ -141,118 +183,163 @@ export const LinkCard = ({ id, title, url, description, platform, category, cate
   };
 
   return (
-    <Card className="p-5 shadow-card hover:shadow-md transition-all duration-300 bg-gradient-card border-border/50 animate-fade-in group">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-				  <div
-					  className="p-2.5 rounded-lg shrink-0 transition-all duration-200 group-hover:scale-105"
-					  style={{
-						  background: getPlatformColor(platform).bgGradient || getPlatformColor(platform).bg,
-					  }}
-				  >
-					  <div style={{ color: getPlatformColor(platform).icon }}>
-						  {getPlatformIcon(platform)}
-					  </div>
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-foreground text-lg mb-1 truncate">{title}</h3>
-            <p className="text-sm text-muted-foreground truncate">{platform}</p>
+    <Card
+      className={cn(
+        "group relative flex flex-col overflow-hidden rounded-xl border border-border/60 bg-card/95 p-3 shadow-sm",
+        "transition-[box-shadow,transform,border-color] duration-200 hover:border-border hover:shadow-md",
+        "sm:p-5"
+      )}
+    >
+      {/* Header: title block + secondary actions */}
+      <div className="flex gap-2 sm:gap-3">
+        <div
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-[1.02] sm:h-12 sm:w-12"
+          style={{
+            background: platformTheme.bgGradient || platformTheme.bg,
+          }}
+          aria-label={hostname ? `${platform}, ${hostname}` : platform}
+        >
+          <div style={{ color: platformTheme.icon }} aria-hidden>
+            {getPlatformIcon(platform, "h-5 w-5 sm:h-[22px] sm:w-[22px]")}
           </div>
         </div>
-        {/* Always visible on touch/mobile; hover-reveal on desktop */}
-        <div className="flex gap-1 shrink-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-          {onEdit && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleEdit}
-              className="hover:bg-primary/10 hover:text-primary"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleDelete}
-            className="hover:bg-destructive/10 hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+
+        <div className="min-w-0 flex-1 pt-0.5">
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+             
+              {/* sm+: platform name + hostname; below sm only the icon tile (left) indicates platform */}
+              <div className="mt-1 hidden flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground sm:flex sm:text-xs">
+                <span className="font-medium uppercase tracking-wide text-foreground/80">{platform}</span>
+                {hostname && (
+                  <>
+                    <span className="text-border" aria-hidden>
+                      ·
+                    </span>
+                    <span className="max-w-[200px] truncate md:max-w-[260px]" title={hostname}>
+                      {hostname}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-muted sm:h-9 sm:w-9"
+                  aria-label="Link actions"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem
+                  className="gap-2"
+                  onSelect={() => {
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4 shrink-0" />
+                  Open in new tab
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="gap-2"
+                  onSelect={() => {
+                    setLinkPreviewOpen(true);
+                  }}
+                >
+                  <Eye className="h-4 w-4 shrink-0" />
+                  Preview
+                </DropdownMenuItem>
+                {videoInfo.isVideo && (
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onSelect={() => {
+                      setVideoPlayerOpen(true);
+                    }}
+                  >
+                    <Play className="h-4 w-4 shrink-0" />
+                    Watch video
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                {onEdit && (
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onSelect={() => {
+                      handleEdit();
+                    }}
+                  >
+                    <Pencil className="h-4 w-4 shrink-0" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  className="gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
+                  onSelect={() => {
+                    void handleDelete();
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 shrink-0" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
+<div className="mt-2.5">
+ <h3 className="line-clamp-2 text-[12px] font-semibold leading-snug text-foreground sm:text-lg sm:leading-tight">
+                {title}
+              </h3>
+</div>
+
       {description && (
-        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{description}</p>
+        <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground sm:mt-3 sm:line-clamp-3 sm:text-sm">
+          {description}
+        </p>
       )}
 
-      <div className="flex items-center justify-between gap-3 mt-4 flex-wrap">
+      <div className="mt-3 flex min-h-0 flex-1 flex-col gap-2 sm:mt-4">
         {category && (
           <span
-            className="text-xs px-3 py-1 rounded-full font-medium"
+            className="inline-flex max-w-full items-center self-start truncate rounded-full px-2.5 py-1 text-[11px] font-medium sm:text-xs"
             style={{
-              backgroundColor: `${category.color}15`,
+              backgroundColor: `${category.color}18`,
               color: category.color,
+              border: `1px solid ${category.color}35`,
             }}
+            title={getCategoryDisplay() ?? category.name}
           >
-            {getCategoryDisplay()}
+            <span className="truncate">{getCategoryDisplay()}</span>
           </span>
         )}
-			  <div className="flex gap-2 ml-auto flex-wrap justify-end">
-				  {videoInfo.isVideo && (
-					  <Button
-						  variant="default"
-						  size="sm"
-						  onClick={() => setVideoPlayerOpen(true)}
-						  className="text-white hover:bg-primary/90"
-					  >
-						  <Play className="h-4 w-4 mr-2" />
-						  Watch
-					  </Button>
-				  )}
-				  <Button
-					  variant="outline"
-					  size="sm"
-					  onClick={() => setLinkPreviewOpen(true)}
-					  className="hover:bg-accent"
-				  >
-					  <Eye className="h-4 w-4 mr-2" />
-					  Show
-				  </Button>
-				  <Button
-					  variant="ghost"
-					  size="sm"
-					  asChild
-					  className="text-primary hover:text-primary hover:bg-primary/10"
-				  >
-					  <a href={url} target="_blank" rel="noopener noreferrer">
-						  <ExternalLink className="h-4 w-4 mr-2" />
-						  Visit
-					  </a>
-				  </Button>
-			  </div>
-		  </div>
 
-		  {/* Video Player Modal */}
-		  {videoInfo.isVideo && (
-			  <VideoPlayer
-				  open={videoPlayerOpen}
-				  onOpenChange={setVideoPlayerOpen}
-				  videoInfo={videoInfo}
-				  url={url}
-				  title={title}
-			  />
-		  )}
+      </div>
 
-		  {/* Link Preview Modal */}
-		  <LinkPreview
-			  open={linkPreviewOpen}
-			  onOpenChange={setLinkPreviewOpen}
-			  url={url}
-			  title={title}
-			  description={description}
-			  platform={platform}
-		  />
+      {videoInfo.isVideo && (
+        <VideoPlayer
+          open={videoPlayerOpen}
+          onOpenChange={setVideoPlayerOpen}
+          videoInfo={videoInfo}
+          url={url}
+          title={title}
+        />
+      )}
+
+      <LinkPreview
+        open={linkPreviewOpen}
+        onOpenChange={setLinkPreviewOpen}
+        url={url}
+        title={title}
+        description={description}
+        platform={platform}
+      />
     </Card>
   );
 };

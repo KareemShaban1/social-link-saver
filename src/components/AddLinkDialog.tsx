@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +56,23 @@ const PLATFORMS = [
   "Other"
 ];
 
+/** Depth-first list of categories for selects (unlimited nesting). */
+function flattenCategoriesTree(categories: Category[]): { category: Category; depth: number }[] {
+  const result: { category: Category; depth: number }[] = [];
+  const roots = categories
+    .filter((c) => !c.parent_id)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const walk = (cat: Category, depth: number) => {
+    result.push({ category: cat, depth });
+    categories
+      .filter((c) => c.parent_id === cat.id)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach((child) => walk(child, depth + 1));
+  };
+  roots.forEach((r) => walk(r, 0));
+  return result;
+}
+
 export const AddLinkDialog = ({
   categories,
   onLinkAdded,
@@ -79,8 +96,7 @@ export const AddLinkDialog = ({
 
   const isEditMode = !!linkToEdit;
 
-  const parentCategories = categories.filter(c => !c.parent_id);
-  const getSubcategories = (parentId: string) => categories.filter(c => c.parent_id === parentId);
+  const categoriesForSelect = useMemo(() => flattenCategoriesTree(categories), [categories]);
 
   // Load link data when editing
   useEffect(() => {
@@ -163,11 +179,12 @@ export const AddLinkDialog = ({
       });
 
       return newCategory.id;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating category:", error);
+      const message = error instanceof Error ? error.message : "Unknown error";
       toast({
         title: "Error",
-        description: `Failed to create category: ${error?.message || 'Unknown error'}`,
+        description: `Failed to create category: ${message}`,
         variant: "destructive",
       });
       return null;
@@ -382,10 +399,11 @@ export const AddLinkDialog = ({
         onEditComplete();
       }
       onLinkAdded();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : isEditMode ? "Failed to update link" : "Failed to save link";
       toast({
         title: "Error",
-        description: error.message || (isEditMode ? "Failed to update link" : "Failed to save link"),
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -506,16 +524,17 @@ export const AddLinkDialog = ({
                 <SelectTrigger>
                   <SelectValue placeholder="Select existing category" />
                 </SelectTrigger>
-                <SelectContent>
-                  {parentCategories.map((cat) => (
-                    <React.Fragment key={cat.id}>
-                      <SelectItem value={cat.id}>{cat.name}</SelectItem>
-                      {getSubcategories(cat.id).map((subcat) => (
-                        <SelectItem key={subcat.id} value={subcat.id}>
-                          └─ {subcat.name}
-                        </SelectItem>
-                      ))}
-                    </React.Fragment>
+                <SelectContent className="max-h-[min(60vh,320px)]">
+                  {categoriesForSelect.map(({ category: cat, depth }) => (
+                    <SelectItem key={cat.id} value={cat.id} className="pr-8">
+                      <span
+                        className="block truncate"
+                        style={{ paddingLeft: depth * 14 }}
+                        title={cat.name}
+                      >
+                        {cat.name}
+                      </span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
