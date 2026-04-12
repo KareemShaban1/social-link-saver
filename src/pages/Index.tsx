@@ -562,14 +562,14 @@ const Index = () => {
                 </div>
               </div>
             )}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <div className="text-sm font-medium text-muted-foreground">Category</div>
               <CategoryFilter
                 categories={categories}
                 selectedCategory={selectedCategory}
                 onSelectCategory={setSelectedCategory}
               />
-            </div>
+            </div> */}
             {(selectedCategory !== null || selectedPlatform !== null || searchQuery.trim() !== "") && (
               <Button
                 variant="outline"
@@ -596,16 +596,18 @@ const Index = () => {
             {(selectedCategory !== null || selectedPlatform !== null || searchQuery.trim() !== "") && (
               <Badge variant="secondary">Filtered</Badge>
             )}
-          </div>
-        )}
 
-        <AddLinkDialog
+  <AddLinkDialog
           categories={categories}
           onLinkAdded={fetchData}
           onCategoriesChange={fetchData}
           linkToEdit={linkToEdit}
           onEditComplete={() => setLinkToEdit(null)}
         />
+          </div>
+        )}
+
+      
 
         <Dialog open={statsModalOpen} onOpenChange={setStatsModalOpen}>
           <DialogContent className="max-h-[min(90vh,640px)] max-w-lg gap-0 overflow-hidden p-0 sm:max-w-lg">
