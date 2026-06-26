@@ -15,7 +15,14 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      includeAssets: [
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "icons/icon-512-maskable.png",
+        "icons/apple-touch-icon.png",
+      ],
       manifest: {
+        id: "/socialsaver-pwa-v2",
         name: "SocialSaver",
         short_name: "SocialSaver",
         description: "Save, organize, and access your social media links.",
@@ -26,22 +33,29 @@ export default defineConfig(({ mode }) => ({
         scope: "/",
         icons: [
           {
-            src: "/pwa-192x192.svg",
+            src: "/icons/icon-192.png",
             sizes: "192x192",
-            type: "image/svg+xml",
+            type: "image/png",
             purpose: "any",
           },
           {
-            src: "/pwa-512x512.svg",
+            src: "/icons/icon-512.png",
             sizes: "512x512",
-            type: "image/svg+xml",
-            purpose: "any maskable",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "/icons/icon-512-maskable.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
           },
         ],
       },
       workbox: {
         navigateFallback: "/index.html",
-        globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,ico,webmanifest}"],
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.mode === "navigate",
