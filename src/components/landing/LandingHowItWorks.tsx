@@ -92,7 +92,7 @@ export const LandingHowItWorks = () => {
           ))}
         </div>
 
-        <AnimateIn variant="scale" delay={200}>
+        {/* <AnimateIn variant="scale" delay={200}>
           <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl transition-shadow duration-300 hover:shadow-2xl">
             <div className="flex min-h-[380px]">
               <aside className="hidden w-52 shrink-0 border-r border-gray-100 bg-gray-50 p-4 sm:block">
@@ -158,7 +158,7 @@ export const LandingHowItWorks = () => {
               </div>
             </div>
           </div>
-        </AnimateIn>
+        </AnimateIn> */}
       </div>
     </section>
   );

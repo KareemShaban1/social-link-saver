@@ -46,9 +46,9 @@ export const LandingFooter = () => {
   const { t } = useTranslation();
 
   return (
-    <footer id="contact" className="border-t border-gray-100 bg-white">
+    <footer className="border-t border-gray-100 bg-white">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-2">
           <AnimateIn variant="fade-up" className="sm:col-span-2 lg:col-span-1">
             <Link to="/" className="mb-4 flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white transition-transform hover:scale-105">
@@ -57,6 +57,12 @@ export const LandingFooter = () => {
               <span className="text-lg font-bold text-gray-900">{t("common.brand")}</span>
             </Link>
             <p className="mb-5 max-w-xs text-sm leading-relaxed text-gray-500">{t("landing.footer.tagline")}</p>
+            <Link
+              to="/contact"
+              className="mb-5 inline-block text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-700"
+            >
+              {t("nav.contact")} →
+            </Link>
             <div className="flex gap-3">
               {[
                 { Icon: FacebookIcon, label: "Facebook" },
@@ -75,7 +81,7 @@ export const LandingFooter = () => {
             </div>
           </AnimateIn>
 
-          {footerSections.map(({ titleKey, linkKeys, id }, colIndex) => (
+          {/* {footerSections.map(({ titleKey, linkKeys, id }, colIndex) => (
             <AnimateIn key={titleKey} variant="fade-up" delay={100 + colIndex * 80}>
               <div id={id}>
                 <h4 className="mb-4 text-sm font-bold text-gray-900">{t(titleKey)}</h4>
@@ -93,7 +99,7 @@ export const LandingFooter = () => {
                 </ul>
               </div>
             </AnimateIn>
-          ))}
+          ))} */}
 
           <AnimateIn variant="fade-up" delay={340}>
             <div id="pricing">

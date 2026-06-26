@@ -16,11 +16,11 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
-        name: "LinkSaver",
-        short_name: "LinkSaver",
+        name: "SocialSaver",
+        short_name: "SocialSaver",
         description: "Save, organize, and access your social media links.",
-        theme_color: "#1ba6d4",
-        background_color: "#0f172a",
+        theme_color: "#4F46E5",
+        background_color: "#F9FAFB",
         display: "standalone",
         start_url: "/",
         scope: "/",

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Bookmark, Menu, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -8,19 +8,33 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navLinkKeys = [
-  { key: "nav.home" as const, href: "#home" },
-  { key: "nav.features" as const, href: "#features" },
-  { key: "nav.howItWorks" as const, href: "#how-it-works" },
-  { key: "nav.pricing" as const, href: "#pricing" },
-  { key: "nav.blog" as const, href: "#blog" },
-  { key: "nav.contact" as const, href: "#contact" },
+  { key: "nav.home" as const, href: "/#home" },
+  { key: "nav.features" as const, href: "/#features" },
+  { key: "nav.howItWorks" as const, href: "/#how-it-works" },
+  { key: "nav.contact" as const, href: "/contact", route: true },
 ];
 
 export const LandingNavbar = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeLink, setActiveLink] = useState("nav.home");
+
+  const isLinkActive = (link: (typeof navLinkKeys)[number]) =>
+    link.route ? location.pathname === link.href : location.pathname === "/" && activeLink === link.key;
+
+  const navLinkClass = (link: (typeof navLinkKeys)[number]) =>
+    cn(
+      "text-sm font-medium transition-colors hover:text-indigo-600",
+      isLinkActive(link) ? "border-b-2 border-indigo-600 pb-0.5 text-indigo-600" : "text-gray-600",
+    );
+
+  const mobileLinkClass = (link: (typeof navLinkKeys)[number]) =>
+    cn(
+      "rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+      isLinkActive(link) ? "bg-indigo-50 text-indigo-600" : "text-gray-600 hover:bg-gray-50",
+    );
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-md">
@@ -37,25 +51,34 @@ export const LandingNavbar = () => {
         </Link>
 
         <nav className="hidden items-center gap-8 lg:flex">
-          {navLinkKeys.map((link, index) => (
-            <a
-              key={link.key}
-              href={link.href}
-              onClick={() => setActiveLink(link.key)}
-              className={cn(
-                "animate-fade-in-down text-sm font-medium opacity-0 transition-colors hover:text-indigo-600",
-                activeLink === link.key
-                  ? "border-b-2 border-indigo-600 pb-0.5 text-indigo-600"
-                  : "text-gray-600",
-              )}
-              style={{
-                animationDelay: `${100 + index * 60}ms`,
-                animationFillMode: "forwards",
-              }}
-            >
-              {t(link.key)}
-            </a>
-          ))}
+          {navLinkKeys.map((link, index) =>
+            link.route ? (
+              <Link
+                key={link.key}
+                to={link.href}
+                className={cn("animate-fade-in-down opacity-0", navLinkClass(link))}
+                style={{
+                  animationDelay: `${100 + index * 60}ms`,
+                  animationFillMode: "forwards",
+                }}
+              >
+                {t(link.key)}
+              </Link>
+            ) : (
+              <a
+                key={link.key}
+                href={link.href}
+                onClick={() => setActiveLink(link.key)}
+                className={cn("animate-fade-in-down opacity-0", navLinkClass(link))}
+                style={{
+                  animationDelay: `${100 + index * 60}ms`,
+                  animationFillMode: "forwards",
+                }}
+              >
+                {t(link.key)}
+              </a>
+            ),
+          )}
         </nav>
 
         <div
@@ -107,25 +130,32 @@ export const LandingNavbar = () => {
       >
         <div className="px-4 py-4">
           <nav className="flex flex-col gap-1">
-            {navLinkKeys.map((link, index) => (
-              <a
-                key={link.key}
-                href={link.href}
-                onClick={() => {
-                  setActiveLink(link.key);
-                  setMobileOpen(false);
-                }}
-                className={cn(
-                  "rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
-                  activeLink === link.key
-                    ? "bg-indigo-50 text-indigo-600"
-                    : "text-gray-600 hover:bg-gray-50",
-                )}
-                style={{ transitionDelay: mobileOpen ? `${index * 50}ms` : "0ms" }}
-              >
-                {t(link.key)}
-              </a>
-            ))}
+            {navLinkKeys.map((link, index) =>
+              link.route ? (
+                <Link
+                  key={link.key}
+                  to={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={mobileLinkClass(link)}
+                  style={{ transitionDelay: mobileOpen ? `${index * 50}ms` : "0ms" }}
+                >
+                  {t(link.key)}
+                </Link>
+              ) : (
+                <a
+                  key={link.key}
+                  href={link.href}
+                  onClick={() => {
+                    setActiveLink(link.key);
+                    setMobileOpen(false);
+                  }}
+                  className={mobileLinkClass(link)}
+                  style={{ transitionDelay: mobileOpen ? `${index * 50}ms` : "0ms" }}
+                >
+                  {t(link.key)}
+                </a>
+              ),
+            )}
           </nav>
           <div className="mt-4 flex flex-col gap-2 border-t border-gray-100 pt-4">
             {user ? (

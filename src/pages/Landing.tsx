@@ -6,6 +6,8 @@ import { LandingHowItWorks } from "@/components/landing/LandingHowItWorks";
 import { LandingCTA } from "@/components/landing/LandingCTA";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
+/** Marketing home — contact lives at `/contact` (see `src/pages/Contact.tsx`). */
+
 const Landing = () => (
   <div className="landing-page min-h-screen scroll-smooth bg-white text-gray-900">
     <LandingNavbar />
