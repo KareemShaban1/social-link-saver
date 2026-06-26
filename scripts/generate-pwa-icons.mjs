@@ -12,8 +12,7 @@ await mkdir(iconsDir, { recursive: true });
 const targets = [
   { input: "pwa-192x192.svg", output: "icons/icon-192.png", size: 192 },
   { input: "pwa-192x192.svg", output: "icons/apple-touch-icon.png", size: 180 },
-  { input: "pwa-512x512.svg", output: "icons/icon-512.png", size: 512 },
-  { input: "pwa-512-maskable.svg", output: "icons/icon-512-maskable.png", size: 512 },
+  { input: "pwa-192x192.svg", output: "icons/icon-512.png", size: 512 },
 ];
 
 for (const { input, output, size } of targets) {

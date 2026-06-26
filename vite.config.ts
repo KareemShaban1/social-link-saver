@@ -18,11 +18,10 @@ export default defineConfig(({ mode }) => ({
       includeAssets: [
         "icons/icon-192.png",
         "icons/icon-512.png",
-        "icons/icon-512-maskable.png",
         "icons/apple-touch-icon.png",
       ],
       manifest: {
-        id: "/socialsaver-pwa-v2",
+        id: "/socialsaver-pwa-v3",
         name: "SocialSaver",
         short_name: "SocialSaver",
         description: "Save, organize, and access your social media links.",
@@ -43,12 +42,6 @@ export default defineConfig(({ mode }) => ({
             sizes: "512x512",
             type: "image/png",
             purpose: "any",
-          },
-          {
-            src: "/icons/icon-512-maskable.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
           },
         ],
       },
