@@ -3,10 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Settings, Plus, Pencil, Trash2, Palette, Network } from "lucide-react";
+import { Settings, Plus, Pencil, Trash2, Palette } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/contexts/LanguageContext";
+import { formFieldClass } from "@/lib/formStyles";
+import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryHierarchyEditor } from "./CategoryHierarchyEditor";
@@ -46,6 +49,7 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 	const [parentId, setParentId] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const { toast } = useToast();
+	const { t } = useTranslation();
 
 	const parentCategories = categories.filter(c => !c.parent_id);
 	const getSubcategories = (parentId: string) => categories.filter(c => c.parent_id === parentId);
@@ -80,8 +84,8 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 	const handleAdd = async () => {
 		if (!newName.trim()) {
 			toast({
-				title: "Missing name",
-				description: "Please enter a category name",
+				title: t("categoryManager.nameRequired"),
+				description: t("categoryManager.nameRequiredDesc"),
 				variant: "destructive",
 			});
 			return;
@@ -89,8 +93,8 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 
 		if (!user) {
 			toast({
-				title: "Error",
-				description: "You must be logged in to create categories",
+				title: t("common.error"),
+				description: t("categoryManager.mustBeLoggedIn"),
 				variant: "destructive",
 			});
 			return;
@@ -106,16 +110,17 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 			});
 
 			toast({
-				title: "Success",
-				description: "Category created successfully",
+				title: t("common.success"),
+				description: t("categoryManager.createdSuccess"),
 			});
 
 			resetForm();
 			onCategoriesChange();
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : t("categoryManager.saveFailed");
 			toast({
-				title: "Error",
-				description: error.message || "Failed to create category",
+				title: t("common.error"),
+				description: message,
 				variant: "destructive",
 			});
 		} finally {
@@ -126,8 +131,8 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 	const handleEdit = async () => {
 		if (!editingCategory || !newName.trim()) {
 			toast({
-				title: "Missing name",
-				description: "Please enter a category name",
+				title: t("categoryManager.nameRequired"),
+				description: t("categoryManager.nameRequiredDesc"),
 				variant: "destructive",
 			});
 			return;
@@ -143,16 +148,17 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 			});
 
 			toast({
-				title: "Success",
-				description: "Category updated successfully",
+				title: t("common.success"),
+				description: t("categoryManager.updatedSuccess"),
 			});
 
 			resetForm();
 			onCategoriesChange();
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : t("categoryManager.saveFailed");
 			toast({
-				title: "Error",
-				description: error.message || "Failed to update category",
+				title: t("common.error"),
+				description: message,
 				variant: "destructive",
 			});
 		} finally {
@@ -169,16 +175,17 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 			await api.deleteCategory(deleteCategory.id);
 
 			toast({
-				title: "Success",
-				description: "Category deleted successfully",
+				title: t("common.success"),
+				description: t("categoryManager.deletedSuccess"),
 			});
 
 			setDeleteCategory(null);
 			onCategoriesChange();
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : t("categoryManager.deleteFailed");
 			toast({
-				title: "Error",
-				description: error.message || "Failed to delete category",
+				title: t("common.error"),
+				description: message,
 				variant: "destructive",
 			});
 		} finally {
@@ -200,66 +207,69 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 				if (!isOpen) resetForm();
 			}}>
 				<DialogTrigger asChild>
-					<Button variant="outline" className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md">
-						<Settings className="mr-2 h-4 w-4" />
-						Manage Categories
+					<Button variant="outline" className="rounded-full border-gray-200 hover:border-indigo-200 hover:bg-indigo-50">
+						<Settings className="me-2 h-4 w-4" />
+						{t("categoryManager.title")}
 					</Button>
 				</DialogTrigger>
-				<DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
+				<DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[700px]">
 					<DialogHeader>
-						<DialogTitle className="flex items-center gap-2">
-							<Palette className="h-5 w-5" />
-							Manage Categories
+						<DialogTitle className="flex items-center gap-2 text-gray-900">
+							<Palette className="h-5 w-5 text-primary" />
+							{t("categoryManager.title")}
 						</DialogTitle>
 					</DialogHeader>
 
 					<Tabs defaultValue="form" className="w-full">
-						<TabsList className="grid w-full grid-cols-2">
-							<TabsTrigger value="form" className="flex items-center gap-2">
+						<TabsList className="grid w-full grid-cols-2 rounded-xl bg-gray-100 p-1">
+							<TabsTrigger value="form" className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
 								<Plus className="h-4 w-4" />
-								Add/Edit
+								{t("categoryManager.addEditTab")}
 							</TabsTrigger>
-							
 						</TabsList>
 
-						<TabsContent value="form" className="space-y-4 mt-4">
-							{/* Add/Edit Form */}
-							<div className="border rounded-lg p-4 bg-muted/30 space-y-4">
-								<h3 className="font-semibold text-sm">
-									{editingCategory ? "Edit Category" : "Add New Category"}
+						<TabsContent value="form" className="mt-4 space-y-4">
+							<div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+								<h3 className="text-sm font-semibold text-gray-900">
+									{editingCategory ? t("categoryManager.editCategory") : t("categoryManager.addNewCategory")}
 								</h3>
 								<div className="space-y-3">
 									<div className="space-y-2">
-										<Label htmlFor="category-name">Category Name</Label>
+										<Label htmlFor="category-name">{t("categoryManager.categoryName")}</Label>
 										<Input
 											id="category-name"
 											value={newName}
 											onChange={(e) => setNewName(e.target.value)}
-											placeholder="Enter category name"
+											placeholder={t("categoryManager.namePlaceholder")}
+											className={formFieldClass}
 										/>
 									</div>
 									<div className="space-y-2">
-										<Label htmlFor="parent-category">Parent Category (Optional)</Label>
+										<Label htmlFor="parent-category">{t("categoryManager.parentCategoryOptional")}</Label>
 										<select
 											id="parent-category"
-											title="Select parent category"
+											title={t("categoryManager.parentCategory")}
 											value={parentId || ""}
 											onChange={(e) => setParentId(e.target.value || null)}
-											className="w-full h-10 px-3 rounded-md border border-input bg-background"
+											className={cn(
+												"h-10 w-full appearance-none px-3 text-sm",
+												formFieldClass,
+												parentId ? "text-gray-900" : "text-gray-500",
+											)}
 										>
-											<option value="">None (Top-level category)</option>
+											<option value="" className="bg-white text-gray-500">
+												{t("categoryManager.noneTopLevelLong")}
+											</option>
 											{getParentOptions().map(({ id, label, depth }) => (
-												<option key={id} value={id}>
+												<option key={id} value={id} className="bg-white text-gray-900">
 													{depth === 0 ? label : "\u00A0\u00A0".repeat(depth) + "└─ " + label}
 												</option>
 											))}
 										</select>
-										<p className="text-xs text-muted-foreground">
-											Choose a main category or a sub-category to nest under it.
-										</p>
+										<p className="text-xs text-gray-500">{t("categoryManager.parentHint")}</p>
 									</div>
 									<div className="space-y-2">
-										<Label>Color</Label>
+										<Label>{t("categoryManager.color")}</Label>
 										<div className="flex flex-wrap gap-2">
 											{PRESET_COLORS.map((color) => (
 												<button
@@ -278,7 +288,7 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 													value={newColor}
 													onChange={(e) => setNewColor(e.target.value)}
 													className="w-10 h-10 rounded-lg cursor-pointer"
-													title="Custom color"
+													title={t("categoryManager.customColor")}
 												/>
 											</div>
 										</div>
@@ -286,29 +296,17 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 									<div className="flex gap-2">
 										{editingCategory ? (
 											<>
-												<Button
-													onClick={handleEdit}
-													disabled={loading}
-													className="flex-1 bg-primary hover:bg-primary/90"
-												>
-													Update Category
+												<Button onClick={handleEdit} disabled={loading} className="flex-1 rounded-full">
+													{t("categoryManager.updateCategory")}
 												</Button>
-												<Button
-													onClick={resetForm}
-													variant="outline"
-													disabled={loading}
-												>
-													Cancel
+												<Button onClick={resetForm} variant="outline" disabled={loading} className="rounded-full border-gray-200">
+													{t("common.cancel")}
 												</Button>
 											</>
 										) : (
-											<Button
-												onClick={handleAdd}
-												disabled={loading}
-												className="w-full bg-primary hover:bg-primary/90"
-											>
-												<Plus className="mr-2 h-4 w-4" />
-												Add Category
+											<Button onClick={handleAdd} disabled={loading} className="w-full rounded-full">
+												<Plus className="me-2 h-4 w-4" />
+												{t("categoryManager.addCategory")}
 											</Button>
 										)}
 									</div>
@@ -317,11 +315,9 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 
 							{/* Categories List (recursive tree) */}
 							<div className="space-y-2">
-								<h3 className="font-semibold text-sm">Existing Categories</h3>
+								<h3 className="text-sm font-semibold text-gray-900">{t("categoryManager.existingCategories")}</h3>
 								{categories.length === 0 ? (
-									<p className="text-sm text-muted-foreground text-center py-8">
-										No categories yet. Create your first category above!
-									</p>
+									<p className="py-8 text-center text-sm text-gray-500">{t("categoryManager.noCategoriesHint")}</p>
 								) : (
 									<div className="space-y-2">
 										{parentCategories.map((category) => (
@@ -334,7 +330,7 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 															<>
 																<div
 																	key={cat.id}
-																	className={`flex items-center justify-between p-3 rounded-lg border hover:shadow-sm transition-shadow ${isTop ? "bg-card" : "bg-muted/30"}`}
+																	className={`flex items-center justify-between rounded-xl border border-gray-100 p-3 transition-shadow hover:shadow-sm ${isTop ? "bg-white" : "bg-gray-50"}`}
 																	style={depth > 0 ? { marginLeft: depth * 20 } : undefined}
 																>
 																	<div className="flex items-center gap-3">
@@ -342,7 +338,7 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 																			className={`rounded-lg shrink-0 ${isTop ? "w-8 h-8" : "w-6 h-6"}`}
 																			style={{ backgroundColor: cat.color }}
 																		/>
-																		<span className={isTop ? "font-medium" : "font-medium text-sm"}>{cat.name}</span>
+																		<span className={isTop ? "font-medium text-black" : "font-medium text-sm text-black"}>{cat.name}</span>
 																	</div>
 																	<div className="flex gap-1">
 																		<Button
@@ -392,20 +388,21 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 			<AlertDialog open={!!deleteCategory} onOpenChange={(isOpen) => !isOpen && setDeleteCategory(null)}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete Category</AlertDialogTitle>
+						<AlertDialogTitle>{t("categoryManager.deleteCategory")}</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete "{deleteCategory?.name}"? This will remove the category
-							from all associated links (links won't be deleted).
+							{t("categoryManager.deleteConfirmDesc", { name: deleteCategory?.name ?? "" })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+						<AlertDialogCancel disabled={loading} className="rounded-full">
+							{t("common.cancel")}
+						</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={handleDelete}
 							disabled={loading}
-							className="bg-destructive hover:bg-destructive/90"
+							className="rounded-full bg-destructive hover:bg-destructive/90"
 						>
-							{loading ? "Deleting..." : "Delete"}
+							{loading ? t("categoryManager.deleting") : t("common.delete")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

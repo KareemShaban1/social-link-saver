@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Check, ChevronRight, Grid3x3, Folder } from "lucide-react";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 interface Category {
   id: string;
@@ -39,6 +40,7 @@ const getContrastColor = (color: string): string => {
 };
 
 export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory, compact = false }: CategoryFilterProps) => {
+	const { t } = useTranslation();
 	const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 	const parentCategories = categories.filter(c => !c.parent_id);
 	const getSubcategories = (parentId: string) => categories.filter(c => c.parent_id === parentId);
@@ -121,7 +123,7 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 									}}
 								>
 									{isSubSelected && <Check className="h-3 w-3 mr-1" />}
-									{isSubSelected ? "✓" : "Select"}
+									{isSubSelected ? "✓" : t("categoryFilter.select")}
 								</Button>
 							</div>
 							<CollapsibleContent>
@@ -167,7 +169,7 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 								}}
 							>
 								{isSubSelected && <Check className="h-3 w-3 mr-1" />}
-								{isSubSelected ? "✓" : "Select"}
+								{isSubSelected ? "✓" : t("categoryFilter.select")}
 							</Button>
 						</div>
 					)}
@@ -186,9 +188,9 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 					onClick={() => onSelectCategory(null)}
 					className="w-full justify-start"
 				>
-					{selectedCategory === null && <Check className="h-4 w-4 mr-2" />}
-					<Grid3x3 className="h-4 w-4 mr-2" />
-					All categories
+					{selectedCategory === null && <Check className="me-2 h-4 w-4" />}
+					<Grid3x3 className="me-2 h-4 w-4" />
+					{t("categoryFilter.allCategories")}
 				</Button>
 				{parentCategories.map((category) => {
 					const subcategories = getSubcategories(category.id);
@@ -281,7 +283,7 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 				{parentCategories.length === 0 && (
 					<div className="py-4 text-center text-sm text-muted-foreground">
 						<Folder className="h-8 w-8 mx-auto mb-1 opacity-50" />
-						No categories
+						{t("categoryFilter.noCategoriesShort")}
 					</div>
 				)}
 			</div>
@@ -303,9 +305,9 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 						  : "hover:shadow-sm"
 						  }`}
 				  >
-					  <Grid3x3 className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
-					  {selectedCategory === null && <Check className="h-4 w-4 mr-2" />}
-					  <span className="font-semibold">All</span>
+					  <Grid3x3 className="me-2 h-4 w-4 transition-transform group-hover:rotate-90" />
+					  {selectedCategory === null && <Check className="me-2 h-4 w-4" />}
+					  <span className="font-semibold">{t("common.all")}</span>
 				  </Button>
 
 				  {parentCategories.map((category) => {
@@ -435,7 +437,7 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 									        }}
 								        >
 									        {isSelected && <Check className="h-3 w-3 mr-1" />}
-									        {isSelected ? "Selected" : "Select"}
+									        {isSelected ? t("categoryFilter.selected") : t("categoryFilter.select")}
 								        </Button>
 							        </div>
 						        </div>
@@ -461,7 +463,7 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory,
 		  {parentCategories.length === 0 && (
 			  <div className="text-center py-8 text-muted-foreground">
 				  <Folder className="h-12 w-12 mx-auto mb-2 opacity-50" />
-				  <p className="text-sm">No categories available</p>
+				  <p className="text-sm">{t("categoryFilter.noCategories")}</p>
 			  </div>
 		  )}
     </div>

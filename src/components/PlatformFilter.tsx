@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Check, Facebook, Instagram, Twitter, Linkedin, Youtube, Video, ImageIcon, Circle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 interface PlatformFilterProps {
   platforms: string[];
@@ -30,7 +32,7 @@ const getPlatformIcon = (platform: string) => {
 };
 
 export const PlatformFilter = ({ platforms, selectedPlatform, onSelectPlatform }: PlatformFilterProps) => {
-  // Sort platforms alphabetically
+  const { t } = useTranslation();
   const sortedPlatforms = [...platforms].sort((a, b) => a.localeCompare(b));
 
   return (
@@ -39,10 +41,13 @@ export const PlatformFilter = ({ platforms, selectedPlatform, onSelectPlatform }
         variant={selectedPlatform === null ? "default" : "outline"}
         size="sm"
         onClick={() => onSelectPlatform(null)}
-        className={selectedPlatform === null ? "bg-primary" : ""}
+        className={cn(
+          "rounded-full",
+          selectedPlatform === null && "bg-primary hover:bg-primary/90",
+        )}
       >
-        {selectedPlatform === null && <Check className="h-3 w-3 mr-1" />}
-        All Platforms
+        {selectedPlatform === null && <Check className="me-1 h-3 w-3" />}
+        {t("platforms.allPlatforms")}
       </Button>
       {sortedPlatforms.map((platform) => (
         <Button
@@ -50,7 +55,10 @@ export const PlatformFilter = ({ platforms, selectedPlatform, onSelectPlatform }
           variant={selectedPlatform === platform ? "default" : "outline"}
           size="sm"
           onClick={() => onSelectPlatform(platform)}
-          className="flex items-center gap-2"
+          className={cn(
+            "flex items-center gap-2 rounded-full",
+            selectedPlatform === platform && "bg-primary hover:bg-primary/90",
+          )}
         >
           {selectedPlatform === platform && <Check className="h-3 w-3" />}
           {getPlatformIcon(platform)}
@@ -60,22 +68,3 @@ export const PlatformFilter = ({ platforms, selectedPlatform, onSelectPlatform }
     </div>
   );
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

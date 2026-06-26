@@ -10,7 +10,9 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { extractUrlMetadata, detectPlatformFromUrl } from "@/lib/urlMetadata";
-import { needsFacebookShareResolution } from "@/lib/videoUtils";
+import { useTranslation } from "@/contexts/LanguageContext";
+import { formFieldClass } from "@/lib/formStyles";
+import type { TranslationKey } from "@/i18n";
 
 interface Category {
   id: string;
@@ -54,8 +56,20 @@ const PLATFORMS = [
   "TikTok",
   "Pinterest",
   "Reddit",
-  "Other"
-];
+  "Other",
+] as const;
+
+const PLATFORM_I18N: Record<(typeof PLATFORMS)[number], TranslationKey> = {
+  Facebook: "platforms.facebook",
+  Instagram: "platforms.instagram",
+  Twitter: "platforms.twitter",
+  LinkedIn: "platforms.linkedin",
+  YouTube: "platforms.youtube",
+  TikTok: "platforms.tiktok",
+  Pinterest: "platforms.pinterest",
+  Reddit: "platforms.reddit",
+  Other: "platforms.other",
+};
 
 /** Depth-first list of categories for selects (unlimited nesting). */
 function flattenCategoriesTree(categories: Category[]): { category: Category; depth: number }[] {
@@ -94,6 +108,7 @@ export const AddLinkDialog = ({
   const [loading, setLoading] = useState(false);
   const [fetchingMetadata, setFetchingMetadata] = useState(false);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const isEditMode = !!linkToEdit;
 
@@ -181,8 +196,8 @@ export const AddLinkDialog = ({
       }
 
       toast({
-        title: "Category created",
-        description: `Created new category: ${trimmed}`,
+        title: t("addLink.categoryCreated"),
+        description: t("addLink.categoryCreatedDesc", { name: trimmed }),
       });
 
       return newCategory.id;
@@ -190,8 +205,8 @@ export const AddLinkDialog = ({
       console.error("Error creating category:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
       toast({
-        title: "Error",
-        description: `Failed to create category: ${message}`,
+        title: t("common.error"),
+        description: t("addLink.categoryCreateFailed", { message }),
         variant: "destructive",
       });
       return null;
@@ -238,8 +253,8 @@ export const AddLinkDialog = ({
   const handleFetchFromUrl = async () => {
     if (!url.trim()) {
       toast({
-        title: "No URL",
-        description: "Please enter a URL first",
+        title: t("addLink.noUrl"),
+        description: t("addLink.enterUrlFirst"),
         variant: "destructive",
       });
       return;
@@ -250,8 +265,8 @@ export const AddLinkDialog = ({
       new URL(url);
     } catch {
       toast({
-        title: "Invalid URL",
-        description: "Please enter a valid URL",
+        title: t("addLink.invalidUrl"),
+        description: t("addLink.enterValidUrl"),
         variant: "destructive",
       });
       return;
@@ -324,14 +339,14 @@ export const AddLinkDialog = ({
         : "Link metadata fetched successfully";
       
       toast({
-        title: "Success",
+        title: t("common.success"),
         description: successMessage,
       });
     } catch (error) {
       console.error("Error fetching metadata:", error);
       toast({
-        title: "Error",
-        description: "Failed to fetch link metadata. You can still fill the form manually.",
+        title: t("common.error"),
+        description: t("addLink.metadataFailed"),
         variant: "destructive",
       });
       // Still set platform from URL detection
@@ -357,8 +372,8 @@ export const AddLinkDialog = ({
     
     if (!title || !url || !platform) {
       toast({
-        title: "Missing fields",
-        description: "Please fill in title, URL, and platform",
+        title: t("addLink.missingFields"),
+        description: t("addLink.fillTitleUrlPlatform"),
         variant: "destructive",
       });
       return;
@@ -366,8 +381,8 @@ export const AddLinkDialog = ({
 
     if (!user) {
       toast({
-        title: "Error",
-        description: "You must be logged in to save links",
+        title: t("common.error"),
+        description: t("addLink.mustBeLoggedIn"),
         variant: "destructive",
       });
       return;
@@ -409,8 +424,8 @@ export const AddLinkDialog = ({
         });
 
         toast({
-          title: "Success",
-          description: "Link updated successfully",
+          title: t("common.success"),
+          description: t("addLink.linkUpdated"),
         });
       } else {
         // Create new link
@@ -423,8 +438,8 @@ export const AddLinkDialog = ({
         });
 
         toast({
-          title: "Success",
-          description: "Link saved successfully",
+          title: t("common.success"),
+          description: t("addLink.linkSaved"),
         });
       }
 
@@ -441,9 +456,9 @@ export const AddLinkDialog = ({
       }
       onLinkAdded();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : isEditMode ? "Failed to update link" : "Failed to save link";
+      const message = error instanceof Error ? error.message : isEditMode ? t("addLink.updateFailed") : t("addLink.saveFailed");
       toast({
-        title: "Error",
+        title: t("common.error"),
         description: message,
         variant: "destructive",
       });
@@ -485,38 +500,39 @@ export const AddLinkDialog = ({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {!isEditMode && (
         <DialogTrigger asChild>
-          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md">
+          <Button className="rounded-full shadow-sm hover:bg-primary/90">
             <Plus className="mr-2 h-4 w-4" />
-            Add Link
+            {t("addLink.addLink")}
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? "Edit Link" : "Add New Link"}</DialogTitle>
+          <DialogTitle>{isEditMode ? t("addLink.editLink") : t("addLink.addNewLink")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title" className="text-gray-700">{t("addLink.title")}</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter link title"
+              placeholder={t("addLink.titlePlaceholder")}
+              className={formFieldClass}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="url">URL</Label>
+            <Label htmlFor="url" className="text-gray-700">{t("addLink.url")}</Label>
             <div className="flex gap-2">
               <Input
                 id="url"
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://..."
+                placeholder={t("addLink.urlPlaceholder")}
                 required
-                className="flex-1"
+                className={`flex-1 ${formFieldClass}`}
               />
               
 	    {/* <Button
@@ -539,31 +555,29 @@ export const AddLinkDialog = ({
                 )}
               </Button> */}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Paste a URL and click "Auto-fill" to automatically extract title, description, and platform
-            </p>
+            <p className="text-xs text-gray-400">{t("addLink.urlHint")}</p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="platform">Platform</Label>
+            <Label htmlFor="platform" className="text-gray-700">{t("addLink.platform")}</Label>
             <Select value={platform} onValueChange={setPlatform} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select platform" />
+              <SelectTrigger className={formFieldClass}>
+                <SelectValue placeholder={t("addLink.selectPlatform")} />
               </SelectTrigger>
               <SelectContent>
                 {PLATFORMS.map((p) => (
                   <SelectItem key={p} value={p}>
-                    {p}
+                    {t(PLATFORM_I18N[p])}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="category">Category (optional)</Label>
+            <Label htmlFor="category" className="text-gray-700">{t("addLink.categoryOptional")}</Label>
             <div className="space-y-2">
               <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select existing category" />
+                <SelectTrigger className={formFieldClass}>
+                  <SelectValue placeholder={t("addLink.selectCategory")} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[min(60vh,320px)]">
                   {categoriesForSelect.map(({ category: cat, depth }) => (
@@ -581,31 +595,37 @@ export const AddLinkDialog = ({
               </Select>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Or type new category name"
+                  placeholder={t("addLink.newCategoryPlaceholder")}
                   value={categoryName}
                   onChange={(e) => setCategoryName(e.target.value)}
+                  className={formFieldClass}
                   onBlur={() => {
                     void syncCategoryNameToExisting();
                   }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Select an existing category or type a new name to create one
-              </p>
+              <p className="text-xs text-gray-400">{t("addLink.categoryHint")}</p>
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Description (optional)</Label>
+            <Label htmlFor="description" className="text-gray-700">{t("addLink.descriptionOptional")}</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add notes about this link..."
+              placeholder={t("addLink.descriptionPlaceholder")}
+              className={formFieldClass}
               rows={3}
             />
           </div>
-          <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary/90">
-            {loading ? (isEditMode ? "Updating..." : "Saving...") : (isEditMode ? "Update Link" : "Save Link")}
+          <Button type="submit" disabled={loading} className="w-full rounded-full">
+            {loading
+              ? isEditMode
+                ? t("addLink.updating")
+                : t("addLink.saving")
+              : isEditMode
+                ? t("addLink.updateLink")
+                : t("addLink.saveLink")}
           </Button>
         </form>
       </DialogContent>

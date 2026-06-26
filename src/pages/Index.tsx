@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { AddLinkDialog } from "@/components/AddLinkDialog";
@@ -7,7 +6,8 @@ import { LinkCard } from "@/components/LinkCard";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { PlatformFilter } from "@/components/PlatformFilter";
 import { CategoryManager } from "@/components/CategoryManager";
-import { ModeToggle } from "@/components/mode-toggle";
+import { AppNavbar } from "@/components/app/AppNavbar";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Bookmark, User, Filter, BarChart3, FolderTree, ChartColumnBig } from "lucide-react";
+import { Search, Bookmark, Filter, BarChart3, FolderTree, Tags } from "lucide-react";
 import { detectPlatformFromUrl, extractUrlMetadata } from "@/lib/urlMetadata";
 import { cn } from "@/lib/utils";
 
@@ -106,6 +106,7 @@ function categoryTabIsActive(
 
 const Index = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [links, setLinks] = useState<Link[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -319,86 +320,74 @@ const Index = () => {
   }, [categories, pathFromSelected, rootCategories]);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation Header */}
-      <div className="sticky top-0 z-40 border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Bookmark className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold">LinkSaver</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <ModeToggle />
-            <Link to="/account">
-              <Button variant="ghost" size="sm">
-                <User className="h-4 w-4 mr-2" />
-                Account
-              </Button>
-            </Link>
-          </div>
+    <div className="landing-page min-h-screen bg-gray-50 text-gray-900">
+      <AppNavbar />
+
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        {/* Dashboard header */}
+        <div className="mb-8 animate-fade-in-up opacity-0" style={{ animationDelay: "100ms", animationFillMode: "forwards" }}>
+          <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary">{t("app.dashboard")}</p>
+          <h1 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">{t("app.myLinks")}</h1>
+          <p className="mt-1 text-sm text-gray-500 sm:text-base">{t("app.subtitle")}</p>
         </div>
-      </div>
 
-      {/* Hero Section - links/bookmarks themed background */}
-      <div className="relative hero-links-bg text-white overflow-hidden">
-        <div className="relative container mx-auto px-4 py-16 md:py-24">
-          <div className="max-w-3xl">
-            <div className="flex items-center gap-3 mb-4">
-              <Bookmark className="h-12 w-12" />
-              <h1 className="text-4xl md:text-5xl font-bold">LinkSaver</h1>
+        {/* Stats cards */}
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+          {[
+            { label: t("app.totalLinks"), value: stats.totalLinks, color: "text-primary", icon: Bookmark },
+            { label: t("app.categories"), value: categories.length, color: "text-sky-600", icon: FolderTree },
+            { label: t("app.platforms"), value: availablePlatforms.length, color: "text-amber-500", icon: Tags },
+            { label: t("app.categorized"), value: `${stats.categorizedRatio}%`, color: "text-emerald-600", icon: BarChart3 },
+          ].map((stat, index) => (
+            <div
+              key={stat.label}
+              className="animate-fade-in-up rounded-2xl border border-gray-100 bg-white px-4 py-4 opacity-0 shadow-sm transition-transform hover:scale-[1.02] hover:shadow-md sm:px-5 sm:py-5"
+              style={{ animationDelay: `${200 + index * 80}ms`, animationFillMode: "forwards" }}
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-medium text-gray-500">{stat.label}</p>
+                <stat.icon className="h-4 w-4 text-gray-300" />
+              </div>
+              <p className={`text-2xl font-extrabold sm:text-3xl ${stat.color}`}>{stat.value}</p>
             </div>
-            <p className="text-normal md:text-2xl opacity-95 mb-6">
-              Save, organize, and access your social media links in one beautiful place
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <AddLinkDialog
-                categories={categories}
-                onLinkAdded={fetchData}
-                onCategoriesChange={fetchData}
-                createPrefill={createPrefill}
-                onCreatePrefillConsumed={() => setCreatePrefill(null)}
-              />
-              <CategoryManager categories={categories} onCategoriesChange={fetchData} />
-            </div>
-
-		<div className="mt-4">
-		<Button type="button" className="bg-white text-black" size="sm" onClick={() => setStatsModalOpen(true)}>
-			<BarChart3 className="mr-2 h-4 w-4" />
-			Show statistics
-			</Button>
-		</div>
-
-            <div className="mt-8 flex flex-wrap gap-2 text-white/90">
-              <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-sm backdrop-blur">
-                {links.length} link{links.length !== 1 ? "s" : ""}
-              </span>
-              <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-sm backdrop-blur">
-                {categories.length} categor{categories.length !== 1 ? "ies" : "y"}
-              </span>
-              {availablePlatforms.length > 0 && (
-                <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-sm backdrop-blur">
-                  {availablePlatforms.length} platform{availablePlatforms.length !== 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
-          </div>
+          ))}
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8 md:py-12">
-        
+        {/* Actions */}
+        <div
+          className="mb-8 flex animate-fade-in-up flex-wrap items-center gap-3 opacity-0"
+          style={{ animationDelay: "450ms", animationFillMode: "forwards" }}
+        >
+          <AddLinkDialog
+            categories={categories}
+            onLinkAdded={fetchData}
+            onCategoriesChange={fetchData}
+            createPrefill={createPrefill}
+            onCreatePrefillConsumed={() => setCreatePrefill(null)}
+          />
+          <CategoryManager categories={categories} onCategoriesChange={fetchData} />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => setStatsModalOpen(true)}
+          >
+            <BarChart3 className="mr-2 h-4 w-4" />
+            {t("app.statistics")}
+          </Button>
+        </div>
 
-        {/* Category drill-down: parents first, then each chosen level’s children on the row below */}
+        {/* Category drill-down */}
         {categories.length > 0 && (
           <div className="mb-6 -mx-4 space-y-3 px-4 md:mx-0 md:px-0">
-            <p className="text-xs font-medium text-muted-foreground md:text-sm">Categories</p>
+            <p className="text-xs font-medium text-gray-500 md:text-sm">{t("app.categoriesLabel")}</p>
             {categoryTabLevels.map((row) => (
               <div key={`cat-row-${row.rowIndex}`}>
                 {row.rowIndex > 0 && row.parent && (
-                  <p className="mb-1.5 text-[10px] text-muted-foreground sm:text-xs">
-                    Subcategories of{" "}
-                    <span className="font-medium text-foreground">{row.parent.name}</span>
+                  <p className="mb-1.5 text-[10px] text-gray-400 sm:text-xs">
+                    {t("app.subcategoriesOf")}{" "}
+                    <span className="font-medium text-gray-800">{row.parent.name}</span>
                   </p>
                 )}
                 <div className="overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -408,10 +397,13 @@ const Index = () => {
                         type="button"
                         size="sm"
                         variant={selectedCategory === null ? "default" : "outline"}
-                        className="shrink-0 rounded-full"
+                        className={cn(
+                          "shrink-0 rounded-full",
+                          selectedCategory === null && "bg-primary hover:bg-primary/90",
+                        )}
                         onClick={() => setSelectedCategory(null)}
                       >
-                        All
+                        {t("common.all")}
                       </Button>
                     )}
                     {row.items.map((cat) => {
@@ -459,21 +451,21 @@ const Index = () => {
         <div className="mb-8 space-y-4">
           {/* Mobile: search + Filters button that opens sheet */}
           <div className="flex flex-col gap-3 md:hidden">
-            <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 pointer-events-none" />
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder="Search links..."
+                placeholder={t("app.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-full"
+                className="w-full rounded-xl border-gray-200 bg-white pl-10 focus-visible:ring-indigo-500"
               />
             </div>
             <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" className="w-full justify-between rounded-xl border bg-card shadow-sm">
+                <Button variant="outline" className="w-full justify-between rounded-xl border-gray-200 bg-white shadow-sm">
                   <span className="flex items-center gap-2 text-sm font-semibold">
                     <Filter className="h-4 w-4" />
-                    Filters
+                    {t("app.filters")}
                     {activeFiltersCount > 0 && (
                       <Badge variant="secondary" className="ml-1">
                         {activeFiltersCount}
@@ -484,12 +476,12 @@ const Index = () => {
               </SheetTrigger>
               <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto">
                 <SheetHeader className="text-left">
-                  <SheetTitle>Filters</SheetTitle>
+                  <SheetTitle>{t("app.filters")}</SheetTitle>
                 </SheetHeader>
                 <div className="mt-4 space-y-6 pb-6">
                   {availablePlatforms.length > 0 && (
                     <div className="space-y-2">
-                      <div className="text-sm font-medium text-muted-foreground">Platform</div>
+                      <div className="text-sm font-medium text-gray-500">{t("app.platform")}</div>
                       <div className="flex flex-wrap gap-2">
                         <PlatformFilter
                           platforms={availablePlatforms}
@@ -500,7 +492,7 @@ const Index = () => {
                     </div>
                   )}
                   <div className="space-y-2">
-                    <div className="text-sm font-medium text-muted-foreground">Category</div>
+                    <div className="text-sm font-medium text-gray-500">{t("app.category")}</div>
                     <CategoryFilter
                       categories={categories}
                       selectedCategory={selectedCategory}
@@ -519,7 +511,7 @@ const Index = () => {
                         setFiltersOpen(false);
                       }}
                     >
-                      Clear all
+                      {t("common.clearAll")}
                     </Button>
                   )}
                 </div>
@@ -528,29 +520,29 @@ const Index = () => {
           </div>
 
           {/* Desktop: full horizontal filters bar */}
-          <div className="hidden md:block rounded-xl border bg-card p-4 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <Filter className="h-4 w-4" />
-              Filters
+          <div className="hidden space-y-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm md:block">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+              <Filter className="h-4 w-4 text-primary" />
+              {t("app.filters")}
               {activeFiltersCount > 0 && (
-                <Badge variant="secondary" className="ml-auto">
-                  {activeFiltersCount} active
+                <Badge className="ms-auto bg-primary/10 text-primary hover:bg-primary/10">
+                  {activeFiltersCount} {t("common.active")}
                 </Badge>
               )}
             </div>
             <Separator />
             <div className="relative max-w-xl">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder="Search links..."
+                placeholder={t("app.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="rounded-xl border-input bg-gray-50 pl-10"
               />
             </div>
             {availablePlatforms.length > 0 && (
               <div className="space-y-2">
-                <div className="text-sm font-medium text-muted-foreground">Platform</div>
+                <div className="text-sm font-medium text-gray-500">{t("app.platform")}</div>
                 <div className="overflow-x-auto">
                   <div className="min-w-max pr-2">
                     <PlatformFilter
@@ -563,7 +555,7 @@ const Index = () => {
               </div>
             )}
             {/* <div className="space-y-2">
-              <div className="text-sm font-medium text-muted-foreground">Category</div>
+              <div className="text-sm font-medium text-gray-500">{t("app.category")}</div>
               <CategoryFilter
                 categories={categories}
                 selectedCategory={selectedCategory}
@@ -573,13 +565,14 @@ const Index = () => {
             {(selectedCategory !== null || selectedPlatform !== null || searchQuery.trim() !== "") && (
               <Button
                 variant="outline"
+                className="rounded-full border-gray-200 hover:border-indigo-200 hover:bg-indigo-50"
                 onClick={() => {
                   setSelectedCategory(null);
                   setSelectedPlatform(null);
                   setSearchQuery("");
                 }}
               >
-                Clear all
+                {t("common.clearAll")}
               </Button>
             )}
           </div>
@@ -587,100 +580,104 @@ const Index = () => {
 
         {/* Results Count */}
         {!loading && links.length > 0 && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-500">
             <span>
-              Showing <span className="font-medium text-foreground">{filteredLinks.length}</span> of{" "}
-              <span className="font-medium text-foreground">{links.length}</span> link
-              {links.length !== 1 ? "s" : ""}
+              {t("app.showing", { visible: filteredLinks.length, total: links.length })}{" "}
+              {links.length === 1 ? t("app.link") : t("app.links")}
             </span>
             {(selectedCategory !== null || selectedPlatform !== null || searchQuery.trim() !== "") && (
-              <Badge variant="secondary">Filtered</Badge>
+              <Badge className="bg-primary/10 text-primary hover:bg-primary/10">{t("common.filtered")}</Badge>
             )}
 
-  <AddLinkDialog
-          categories={categories}
-          onLinkAdded={fetchData}
-          onCategoriesChange={fetchData}
-          linkToEdit={linkToEdit}
-          onEditComplete={() => setLinkToEdit(null)}
-        />
+            <AddLinkDialog
+              categories={categories}
+              onLinkAdded={fetchData}
+              onCategoriesChange={fetchData}
+              linkToEdit={linkToEdit}
+              onEditComplete={() => setLinkToEdit(null)}
+            />
           </div>
         )}
 
-      
-
         <Dialog open={statsModalOpen} onOpenChange={setStatsModalOpen}>
-          <DialogContent className="max-h-[min(90vh,640px)] max-w-lg gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <DialogContent className="max-h-[min(90vh,640px)] max-w-lg gap-0 overflow-hidden rounded-2xl border-gray-100 p-0 sm:max-w-lg">
             <div className="max-h-[min(90vh,640px)] overflow-y-auto p-6">
               <DialogHeader className="text-left">
-                <DialogTitle>Dashboard statistics</DialogTitle>
-                <DialogDescription>
-                  Current numbers for your library. Totals reflect all saved links; visibility counts respect active
-                  filters.
-                </DialogDescription>
+                <DialogTitle className="text-gray-900">{t("app.statsTitle")}</DialogTitle>
+                <DialogDescription className="text-gray-500">{t("app.statsDesc")}</DialogDescription>
               </DialogHeader>
               <div className="mt-4 space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Card>
+                  <Card className="rounded-xl border-gray-100 shadow-sm">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-xs font-medium text-muted-foreground">Total links</CardTitle>
+                      <CardTitle className="text-xs font-medium text-gray-500">{t("app.totalLinksCard")}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold">{stats.totalLinks}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {stats.visibleLinks} visible with current filters
+                      <p className="text-2xl font-extrabold text-primary">{stats.totalLinks}</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {t("app.visibleWithFilters", { count: stats.visibleLinks })}
                       </p>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="rounded-xl border-gray-100 shadow-sm">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-xs font-medium text-muted-foreground">Categorized</CardTitle>
+                      <CardTitle className="text-xs font-medium text-gray-500">{t("app.categorizedCard")}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold">{stats.categorizedRatio}%</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {stats.categorizedLinks} with a category ·{" "}
-                        {Math.max(0, stats.totalLinks - stats.categorizedLinks)} uncategorized
+                      <p className="mt-1 text-xs text-gray-500">
+                        {t("app.categorizedDetail", {
+                          count: stats.categorizedLinks,
+                          uncategorized: Math.max(0, stats.totalLinks - stats.categorizedLinks),
+                        })}
                       </p>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="rounded-xl border-gray-100 shadow-sm">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-xs font-medium text-muted-foreground">Top platform</CardTitle>
+                      <CardTitle className="text-xs font-medium text-gray-500">{t("app.topPlatform")}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-xl font-bold">{stats.topPlatform}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {availablePlatforms.length} distinct platform{availablePlatforms.length !== 1 ? "s" : ""} in use
+                      <p className="mt-1 text-xs text-gray-500">
+                        {availablePlatforms.length === 1
+                          ? t("app.platformsInUseOne")
+                          : t("app.platformsInUse", { count: availablePlatforms.length })}
                       </p>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="rounded-xl border-gray-100 shadow-sm">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-xs font-medium text-muted-foreground">Categories</CardTitle>
+                      <CardTitle className="text-xs font-medium text-gray-500">{t("app.categoriesCard")}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold">{categories.length}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {rootCategories.length} top-level folder{rootCategories.length !== 1 ? "s" : ""}
+                      <p className="mt-1 text-xs text-gray-500">
+                        {rootCategories.length === 1
+                          ? t("app.topLevelFolderOne")
+                          : t("app.topLevelFolders", { count: rootCategories.length })}
                       </p>
                     </CardContent>
                   </Card>
                 </div>
 
                 {activeFiltersCount > 0 && (
-                  <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">Active filters: </span>
-                    {selectedCategoryName && <span>Category: {selectedCategoryName}. </span>}
-                    {selectedPlatform && <span>Platform: {selectedPlatform}. </span>}
-                    {searchQuery.trim() && <span>Search: &quot;{searchQuery.trim()}&quot;.</span>}
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                    <span className="font-medium text-gray-900">{t("app.activeFilters")} </span>
+                    {selectedCategoryName && (
+                      <span>{t("app.filterCategory", { name: selectedCategoryName })} </span>
+                    )}
+                    {selectedPlatform && <span>{t("app.filterPlatform", { name: selectedPlatform })} </span>}
+                    {searchQuery.trim() && (
+                      <span>{t("app.filterSearch", { query: searchQuery.trim() })}</span>
+                    )}
                   </div>
                 )}
 
                 {platformBreakdown.length > 0 && (
                   <div>
-                    <p className="mb-2 text-sm font-medium text-foreground">Links by platform</p>
-                    <ul className="divide-y rounded-lg border">
+                    <p className="mb-2 text-sm font-medium text-gray-900">{t("app.linksByPlatform")}</p>
+                    <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100">
                       {platformBreakdown.map(([name, count]) => (
                         <li key={name} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                           <span className="truncate font-medium">{name}</span>
@@ -697,9 +694,9 @@ const Index = () => {
 
         {/* Links Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, idx) => (
-              <div key={idx} className="rounded-xl border bg-card p-5">
+              <div key={idx} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Skeleton className="h-10 w-10 rounded-lg" />
@@ -725,15 +722,15 @@ const Index = () => {
             ))}
           </div>
         ) : filteredLinks.length === 0 ? (
-          <div className="text-center py-12 rounded-xl border bg-card">
-            <Bookmark className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              {links.length === 0 ? "No links yet" : "No links match your filters"}
+          <div className="rounded-2xl border border-gray-100 bg-white py-12 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+              <Bookmark className="h-8 w-8 text-primary/60" />
+            </div>
+            <h3 className="mb-2 text-xl font-bold text-gray-900">
+              {links.length === 0 ? t("app.noLinksYet") : t("app.noLinksMatch")}
             </h3>
-            <p className="text-muted-foreground mb-6">
-              {links.length === 0
-                ? "Start saving your favorite social media links"
-                : "Try adjusting your filters or search query"}
+            <p className="mb-6 text-gray-500">
+              {links.length === 0 ? t("app.noLinksYetDesc") : t("app.noLinksMatchDesc")}
             </p>
             <div className="flex items-center justify-center gap-2 flex-wrap">
               {links.length === 0 && (
@@ -742,22 +739,27 @@ const Index = () => {
               {(links.length > 0 || searchQuery.trim() !== "" || selectedCategory || selectedPlatform) && (
                 <Button
                   variant="outline"
+                  className="rounded-full border-gray-200 hover:border-indigo-200 hover:bg-indigo-50"
                   onClick={() => {
                     setSelectedCategory(null);
                     setSelectedPlatform(null);
                     setSearchQuery("");
                   }}
                 >
-                  Clear all
+                  {t("common.clearAll")}
                 </Button>
               )}
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3">
-            {filteredLinks.map((link) => (
-              <LinkCard
+            {filteredLinks.map((link, index) => (
+              <div
                 key={link.id}
+                className="animate-fade-in-up opacity-0 motion-reduce:animate-none motion-reduce:opacity-100"
+                style={{ animationDelay: `${Math.min(index, 8) * 60}ms`, animationFillMode: "forwards" }}
+              >
+              <LinkCard
                 id={link.id}
                 title={link.title}
                 url={link.url}
@@ -768,10 +770,11 @@ const Index = () => {
                 onDelete={fetchData}
                 onEdit={setLinkToEdit}
               />
+              </div>
             ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };

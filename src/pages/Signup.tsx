@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bookmark } from "lucide-react";
 
 const Signup = () => {
   const [email, setEmail] = useState("");
@@ -16,15 +16,16 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { refreshUser } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password || !fullName) {
       toast({
-        title: "Missing fields",
-        description: "Please fill in all fields",
+        title: t("auth.missingFields"),
+        description: t("auth.fillAllFields"),
         variant: "destructive",
       });
       return;
@@ -32,8 +33,8 @@ const Signup = () => {
 
     if (password.length < 6) {
       toast({
-        title: "Weak password",
-        description: "Password must be at least 6 characters",
+        title: t("auth.weakPassword"),
+        description: t("auth.passwordMinLength"),
         variant: "destructive",
       });
       return;
@@ -44,17 +45,18 @@ const Signup = () => {
     try {
       await api.register(email, password, fullName);
       await refreshUser();
-      
+
       toast({
-        title: "Success",
-        description: "Account created successfully!",
+        title: t("common.success"),
+        description: t("auth.signupSuccess"),
       });
 
       navigate("/app");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : t("auth.createAccountFailed");
       toast({
-        title: "Signup failed",
-        description: error.message || "Failed to create account",
+        title: t("auth.signupFailed"),
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -63,89 +65,76 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[radial-gradient(1200px_circle_at_20%_10%,hsl(var(--primary)/0.18),transparent_50%),radial-gradient(900px_circle_at_80%_20%,hsl(var(--accent)/0.18),transparent_45%),linear-gradient(to_bottom,hsl(var(--background)),hsl(var(--muted)))]">
-      <Card className="w-full max-w-md shadow-lg border-border/60">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Bookmark className="h-8 w-8 text-primary" />
-            <CardTitle className="text-3xl">LinkSaver</CardTitle>
-          </div>
-          <CardDescription>
-            Create an account to start saving your links
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input
-                id="fullName"
-                type="text"
-                placeholder="John Doe"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-              <p className="text-xs text-muted-foreground">
-                Must be at least 6 characters
-              </p>
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creating account..." : "Sign Up"}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm">
-            <span className="text-muted-foreground">Already have an account? </span>
-            <Link to="/login" className="text-primary hover:underline">
-              Sign in
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthLayout
+      title={t("auth.createAccount")}
+      subtitle={t("auth.signupSubtitle")}
+      promoTitle={t("auth.promoSignupTitle")}
+      promoHighlight={t("auth.promoSignupHighlight")}
+    >
+      <form onSubmit={handleSignup} className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="fullName" className="text-gray-700">
+            {t("auth.fullName")}
+          </Label>
+          <Input
+            id="fullName"
+            type="text"
+            placeholder={t("auth.namePlaceholder")}
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="h-11 rounded-xl border-gray-200 bg-gray-50 focus-visible:ring-indigo-500"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-gray-700">
+            {t("common.email")}
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder={t("auth.emailPlaceholder")}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-11 rounded-xl border-gray-200 bg-gray-50 focus-visible:ring-indigo-500"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-gray-700">
+            {t("auth.password")}
+          </Label>
+          <Input
+            id="password"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-11 rounded-xl border-gray-200 bg-gray-50 focus-visible:ring-indigo-500"
+            required
+            minLength={6}
+          />
+          <p className="text-xs text-gray-400">{t("auth.passwordHint")}</p>
+        </div>
+        <Button
+          type="submit"
+          className="h-11 w-full rounded-full text-base transition-transform hover:scale-[1.02] active:scale-[0.98]"
+          disabled={loading}
+        >
+          {loading ? t("auth.creatingAccount") : t("auth.signUpFree")}
+        </Button>
+      </form>
+
+      <p className="mt-3 text-center text-xs text-gray-400">{t("common.noCreditCard")}</p>
+
+      <div className="mt-4 text-center text-sm">
+        <span className="text-gray-500">{t("auth.hasAccount")} </span>
+        <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline">
+          {t("auth.signInLink")}
+        </Link>
+      </div>
+    </AuthLayout>
   );
 };
 
 export default Signup;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

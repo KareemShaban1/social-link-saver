@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { useEffect, useMemo, useState } from "react";
 import { detectVideoUrl, needsFacebookShareResolution } from "@/lib/videoUtils";
 import { VideoPlayer } from "@/components/VideoPlayer";
@@ -29,7 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { cn, getTextDirection } from "@/lib/utils";
 
 interface Category {
   id: string;
@@ -133,6 +134,7 @@ export const LinkCard = ({
   onEdit,
 }: LinkCardProps) => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [linkPreviewOpen, setLinkPreviewOpen] = useState(false);
   const [effectiveUrl, setEffectiveUrl] = useState(url);
@@ -159,6 +161,11 @@ export const LinkCard = ({
   const videoInfo = useMemo(() => detectVideoUrl(effectiveUrl, platform), [effectiveUrl, platform]);
   const platformTheme = useMemo(() => getPlatformColor(platform), [platform]);
   const hostname = useMemo(() => safeHostname(effectiveUrl), [effectiveUrl]);
+  const titleDirection = useMemo(() => getTextDirection(title), [title]);
+  const descriptionDirection = useMemo(
+    () => (description ? getTextDirection(description) : "ltr"),
+    [description],
+  );
 
   const getCategoryDisplay = () => {
     if (!category) return null;
@@ -175,14 +182,14 @@ export const LinkCard = ({
     try {
       await api.deleteLink(id);
       toast({
-        title: "Deleted",
-        description: "Link removed successfully",
+        title: t("linkCard.deleted"),
+        description: t("linkCard.deletedDesc"),
       });
       onDelete();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to delete link";
+      const message = error instanceof Error ? error.message : t("linkCard.deleteFailed");
       toast({
-        title: "Error",
+        title: t("common.error"),
         description: message,
         variant: "destructive",
       });
@@ -206,8 +213,8 @@ export const LinkCard = ({
   return (
     <Card
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-xl border border-border/60 bg-card/95 p-3 shadow-sm",
-        "transition-[box-shadow,transform,border-color] duration-200 hover:border-border hover:shadow-md",
+        "group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-3 shadow-sm",
+        "transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md hover:shadow-primary/5",
         "sm:p-5"
       )}
     >
@@ -251,7 +258,7 @@ export const LinkCard = ({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-muted sm:h-9 sm:w-9"
+                  className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-accent hover:text-accent-foreground sm:h-9 sm:w-9"
                   aria-label="Link actions"
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -265,7 +272,7 @@ export const LinkCard = ({
                   }}
                 >
                   <ExternalLink className="h-4 w-4 shrink-0" />
-                  Open in new tab
+                  {t("linkCard.openNewTab")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="gap-2"
@@ -275,7 +282,7 @@ export const LinkCard = ({
                   }}
                 >
                   <Eye className="h-4 w-4 shrink-0" />
-                  Preview
+                  {t("linkCard.preview")}
                 </DropdownMenuItem>
                 {videoInfo.isVideo && (
                   <DropdownMenuItem
@@ -286,7 +293,7 @@ export const LinkCard = ({
                     }}
                   >
                     <Play className="h-4 w-4 shrink-0" />
-                    Watch video
+                    {t("linkCard.watchVideo")}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -298,7 +305,7 @@ export const LinkCard = ({
                     }}
                   >
                     <Pencil className="h-4 w-4 shrink-0" />
-                    Edit
+                    {t("linkCard.edit")}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
@@ -308,7 +315,7 @@ export const LinkCard = ({
                   }}
                 >
                   <Trash2 className="h-4 w-4 shrink-0" />
-                  Delete
+                  {t("linkCard.delete")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -316,14 +323,26 @@ export const LinkCard = ({
         </div>
       </div>
 
-<div className="mt-2.5">
- <h3 className="line-clamp-2 text-[12px] font-semibold leading-snug text-foreground sm:text-lg sm:leading-tight">
-                {title}
-              </h3>
-</div>
+      <div className="mt-2.5">
+        <h3
+          dir={titleDirection}
+          className={cn(
+            "line-clamp-2 text-[12px] font-semibold leading-snug text-black sm:text-lg sm:leading-tight",
+            titleDirection === "rtl" ? "text-right" : "text-left",
+          )}
+        >
+          {title}
+        </h3>
+      </div>
 
       {description && (
-        <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground sm:mt-3 sm:line-clamp-3 sm:text-sm">
+        <p
+          dir={descriptionDirection}
+          className={cn(
+            "mt-2.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground sm:mt-3 sm:line-clamp-3 sm:text-sm",
+            descriptionDirection === "rtl" ? "text-right" : "text-left",
+          )}
+        >
           {description}
         </p>
       )}
@@ -351,7 +370,7 @@ export const LinkCard = ({
             onClick={() => setVideoPlayerOpen(true)}
           >
             <Play className="h-4 w-4 shrink-0" aria-hidden />
-            Watch video
+            {t("linkCard.watchVideo")}
           </Button>
         )}
       </div>

@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bookmark } from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -15,15 +15,16 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { refreshUser } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast({
-        title: "Missing fields",
-        description: "Please enter both email and password",
+        title: t("auth.missingFields"),
+        description: t("auth.enterEmailPassword"),
         variant: "destructive",
       });
       return;
@@ -34,17 +35,18 @@ const Login = () => {
     try {
       await api.login(email, password);
       await refreshUser();
-      
+
       toast({
-        title: "Success",
-        description: "Logged in successfully",
+        title: t("common.success"),
+        description: t("auth.loginSuccess"),
       });
 
       navigate("/app");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : t("auth.invalidCredentials");
       toast({
-        title: "Login failed",
-        description: error.message || "Invalid credentials",
+        title: t("auth.loginFailed"),
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -53,74 +55,58 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[radial-gradient(1200px_circle_at_20%_10%,hsl(var(--primary)/0.18),transparent_50%),radial-gradient(900px_circle_at_80%_20%,hsl(var(--accent)/0.18),transparent_45%),linear-gradient(to_bottom,hsl(var(--background)),hsl(var(--muted)))]">
-      <Card className="w-full max-w-md shadow-lg border-border/60">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Bookmark className="h-8 w-8 text-primary" />
-            <CardTitle className="text-3xl">LinkSaver</CardTitle>
-          </div>
-          <CardDescription>
-            Sign in to your account to access your saved links
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm">
-            <span className="text-muted-foreground">Don't have an account? </span>
-            <Link to="/signup" className="text-primary hover:underline">
-              Sign up
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthLayout
+      title={t("auth.welcomeBack")}
+      subtitle={t("auth.loginSubtitle")}
+      promoTitle={t("auth.promoLoginTitle")}
+      promoHighlight={t("auth.promoLoginHighlight")}
+    >
+      <form onSubmit={handleLogin} className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-gray-700">
+            {t("common.email")}
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder={t("auth.emailPlaceholder")}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-11 rounded-xl border-gray-200 bg-gray-50 focus-visible:ring-indigo-500"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-gray-700">
+            {t("auth.password")}
+          </Label>
+          <Input
+            id="password"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-11 rounded-xl border-gray-200 bg-gray-50 focus-visible:ring-indigo-500"
+            required
+          />
+        </div>
+        <Button
+          type="submit"
+          className="h-11 w-full rounded-full text-base transition-transform hover:scale-[1.02] active:scale-[0.98]"
+          disabled={loading}
+        >
+          {loading ? t("auth.signingIn") : t("auth.signIn")}
+        </Button>
+      </form>
+
+      <div className="mt-6 text-center text-sm">
+        <span className="text-gray-500">{t("auth.noAccount")} </span>
+        <Link to="/signup" className="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline">
+          {t("auth.signUpLink")}
+        </Link>
+      </div>
+    </AuthLayout>
   );
 };
 
 export default Login;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
