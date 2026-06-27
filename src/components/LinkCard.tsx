@@ -15,6 +15,7 @@ import {
   Play,
   Eye,
   MoreVertical,
+  Star,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -45,12 +46,14 @@ interface LinkCardProps {
   url: string;
   description?: string;
   platform: string;
+  isFavorite?: boolean;
   category?: {
     name: string;
     color: string;
   };
   categories: Category[];
   onDelete: () => void;
+  onFavoriteChange?: (id: string, isFavorite: boolean) => void;
   onEdit?: (link: {
     id: string;
     title: string;
@@ -58,6 +61,7 @@ interface LinkCardProps {
     description?: string;
     platform: string;
     category_id?: string;
+    isFavorite?: boolean;
   }) => void;
 }
 
@@ -128,9 +132,11 @@ export const LinkCard = ({
   url,
   description,
   platform,
+  isFavorite = false,
   category,
   categories,
   onDelete,
+  onFavoriteChange,
   onEdit,
 }: LinkCardProps) => {
   const { toast } = useToast();
@@ -138,6 +144,12 @@ export const LinkCard = ({
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [linkPreviewOpen, setLinkPreviewOpen] = useState(false);
   const [effectiveUrl, setEffectiveUrl] = useState(url);
+  const [favorite, setFavorite] = useState(isFavorite);
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
+
+  useEffect(() => {
+    setFavorite(isFavorite);
+  }, [isFavorite]);
 
   useEffect(() => {
     setEffectiveUrl(url);
@@ -206,7 +218,31 @@ export const LinkCard = ({
         description,
         platform,
         category_id: categoryId,
+        isFavorite: favorite,
       });
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    const next = !favorite;
+    setFavorite(next);
+    setTogglingFavorite(true);
+    try {
+      await api.updateLink(id, { isFavorite: next });
+      toast({
+        title: next ? t("linkCard.favoriteAdded") : t("linkCard.favoriteRemoved"),
+      });
+      onFavoriteChange?.(id, next);
+    } catch (error: unknown) {
+      setFavorite(!next);
+      const message = error instanceof Error ? error.message : t("linkCard.favoriteFailed");
+      toast({
+        title: t("common.error"),
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingFavorite(false);
     }
   };
 
@@ -251,6 +287,26 @@ export const LinkCard = ({
                 )}
               </div>
             </div>
+
+            <div className="flex shrink-0 items-center gap-0.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-10 w-10 sm:h-9 sm:w-9",
+                  favorite
+                    ? "text-amber-500 hover:bg-amber-50 hover:text-amber-600"
+                    : "text-muted-foreground hover:bg-accent hover:text-amber-500",
+                )}
+                aria-label={favorite ? t("linkCard.removeFavorite") : t("linkCard.addFavorite")}
+                disabled={togglingFavorite}
+                onClick={() => {
+                  void handleToggleFavorite();
+                }}
+              >
+                <Star className={cn("h-4 w-4", favorite && "fill-current")} />
+              </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -319,6 +375,7 @@ export const LinkCard = ({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           </div>
         </div>
       </div>

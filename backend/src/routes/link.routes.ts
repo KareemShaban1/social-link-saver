@@ -13,7 +13,7 @@ router.use(authenticate);
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
-    const { categoryId, platform, search } = req.query;
+    const { categoryId, platform, search, favorite } = req.query;
 
     const where: any = {
       userId,
@@ -25,6 +25,10 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 
     if (platform) {
       where.platform = platform as string;
+    }
+
+    if (favorite === 'true') {
+      where.isFavorite = true;
     }
 
     if (search) {
@@ -47,9 +51,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
           },
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: [{ isFavorite: 'desc' }, { createdAt: 'desc' }],
     });
 
     res.json({ links });
@@ -101,6 +103,7 @@ router.post(
     body('description').optional().trim(),
     body('platform').notEmpty().trim(),
     body('categoryId').optional().isUUID(),
+    body('isFavorite').optional().isBoolean(),
   ],
   async (req: AuthRequest, res: Response) => {
     try {
@@ -110,7 +113,7 @@ router.post(
       }
 
       const userId = req.userId!;
-      const { url, title, description, platform, categoryId } = req.body;
+      const { url, title, description, platform, categoryId, isFavorite } = req.body;
 
       // Verify category belongs to user if provided
       if (categoryId) {
@@ -134,6 +137,7 @@ router.post(
           platform,
           categoryId: categoryId || null,
           userId,
+          ...(isFavorite !== undefined && { isFavorite }),
         },
         include: {
           category: {
@@ -163,6 +167,7 @@ router.put(
     body('description').optional().trim(),
     body('platform').optional().notEmpty().trim(),
     body('categoryId').optional().isUUID(),
+    body('isFavorite').optional().isBoolean(),
   ],
   async (req: AuthRequest, res: Response) => {
     try {
@@ -173,7 +178,7 @@ router.put(
 
       const userId = req.userId!;
       const { id } = req.params;
-      const { url, title, description, platform, categoryId } = req.body;
+      const { url, title, description, platform, categoryId, isFavorite } = req.body;
 
       // Check if link exists and belongs to user
       const existingLink = await prisma.link.findFirst({
@@ -209,6 +214,7 @@ router.put(
           ...(description !== undefined && { description }),
           ...(platform && { platform }),
           ...(categoryId !== undefined && { categoryId: categoryId || null }),
+          ...(isFavorite !== undefined && { isFavorite }),
         },
         include: {
           category: {

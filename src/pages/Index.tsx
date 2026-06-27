@@ -28,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Bookmark, Filter, BarChart3, FolderTree, Tags } from "lucide-react";
+import { Search, Bookmark, Filter, BarChart3, FolderTree, Tags, Star } from "lucide-react";
 import { detectPlatformFromUrl, extractUrlMetadata } from "@/lib/urlMetadata";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +38,7 @@ interface Link {
   url: string;
   description?: string;
   platform: string;
+  isFavorite?: boolean;
   category_id?: string;
   categoryId?: string;
   categories?: {
@@ -59,6 +60,7 @@ interface ApiLink {
   url: string;
   description?: string;
   platform: string;
+  isFavorite?: boolean;
   categoryId?: string;
   category_id?: string;
   category?: {
@@ -111,6 +113,7 @@ const Index = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [linkToEdit, setLinkToEdit] = useState<{
@@ -120,6 +123,7 @@ const Index = () => {
     description?: string;
     platform: string;
     category_id?: string;
+    isFavorite?: boolean;
   } | null>(null);
   const [createPrefill, setCreatePrefill] = useState<{
     title?: string;
@@ -151,6 +155,7 @@ const Index = () => {
         // Transform links to match expected format
         const transformedLinks = (linksData as ApiLink[]).map((link) => ({
           ...link,
+          isFavorite: link.isFavorite ?? false,
           category_id: link.categoryId ?? link.category_id ?? undefined,
           categories: link.category ? {
             name: link.category.name,
@@ -234,7 +239,10 @@ const Index = () => {
   // Get unique platforms from links
   const availablePlatforms = Array.from(new Set(links.map(link => link.platform)));
   const activeFiltersCount =
-    (selectedCategory ? 1 : 0) + (selectedPlatform ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
+    (selectedCategory ? 1 : 0) +
+    (selectedPlatform ? 1 : 0) +
+    (showFavoritesOnly ? 1 : 0) +
+    (searchQuery.trim() ? 1 : 0);
 
   // When a category is selected, show links in that category or any descendant (nested subcategories)
   const getDescendantIds = (catId: string): string[] => {
@@ -249,17 +257,31 @@ const Index = () => {
   };
 
   // Use client-side filtering (or move to backend)
-  const filteredLinks = links.filter((link) => {
+  const filteredLinks = links
+    .filter((link) => {
     const linkCatId = link.category_id ?? link.categoryId;
     const categoryMatch = selectedCategory === null || categoryIdMatches(linkCatId);
     const platformMatch = selectedPlatform === null || link.platform === selectedPlatform;
+    const favoritesMatch = !showFavoritesOnly || Boolean(link.isFavorite);
     const searchMatch =
       searchQuery === "" ||
       link.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       link.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       link.platform.toLowerCase().includes(searchQuery.toLowerCase());
-    return categoryMatch && platformMatch && searchMatch;
-  });
+    return categoryMatch && platformMatch && favoritesMatch && searchMatch;
+  })
+    .sort((a, b) => {
+      if (a.isFavorite !== b.isFavorite) {
+        return a.isFavorite ? -1 : 1;
+      }
+      return 0;
+    });
+
+  const handleFavoriteChange = useCallback((id: string, isFavorite: boolean) => {
+    setLinks((prev) =>
+      prev.map((link) => (link.id === id ? { ...link, isFavorite } : link))
+    );
+  }, []);
 
   const stats = useMemo(() => {
     const categorizedLinks = links.filter((link) => Boolean(link.category_id ?? link.categoryId)).length;
@@ -272,6 +294,7 @@ const Index = () => {
 
     return {
       totalLinks: links.length,
+      favoriteLinks: links.filter((link) => link.isFavorite).length,
       visibleLinks: filteredLinks.length,
       categorizedLinks,
       categorizedRatio: links.length ? Math.round((categorizedLinks / links.length) * 100) : 0,
@@ -335,9 +358,9 @@ const Index = () => {
         <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           {[
             { label: t("app.totalLinks"), value: stats.totalLinks, color: "text-primary", icon: Bookmark },
+            { label: t("app.favorites"), value: stats.favoriteLinks, color: "text-amber-500", icon: Star },
             { label: t("app.categories"), value: categories.length, color: "text-sky-600", icon: FolderTree },
-            { label: t("app.platforms"), value: availablePlatforms.length, color: "text-amber-500", icon: Tags },
-            { label: t("app.categorized"), value: `${stats.categorizedRatio}%`, color: "text-emerald-600", icon: BarChart3 },
+            { label: t("app.platforms"), value: availablePlatforms.length, color: "text-emerald-600", icon: Tags },
           ].map((stat, index) => (
             <div
               key={stat.label}
@@ -479,6 +502,22 @@ const Index = () => {
                   <SheetTitle>{t("app.filters")}</SheetTitle>
                 </SheetHeader>
                 <div className="mt-4 space-y-6 pb-6">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-500">{t("app.favorites")}</div>
+                    <Button
+                      type="button"
+                      variant={showFavoritesOnly ? "default" : "outline"}
+                      size="sm"
+                      className={cn(
+                        "rounded-full",
+                        showFavoritesOnly && "bg-amber-500 hover:bg-amber-600",
+                      )}
+                      onClick={() => setShowFavoritesOnly((prev) => !prev)}
+                    >
+                      <Star className={cn("mr-2 h-4 w-4", showFavoritesOnly && "fill-current")} />
+                      {t("app.favoritesOnly")}
+                    </Button>
+                  </div>
                   {availablePlatforms.length > 0 && (
                     <div className="space-y-2">
                       <div className="text-sm font-medium text-gray-500">{t("app.platform")}</div>
@@ -500,13 +539,14 @@ const Index = () => {
                       compact
                     />
                   </div>
-                  {(selectedCategory !== null || selectedPlatform !== null || searchQuery.trim() !== "") && (
+                  {(selectedCategory !== null || selectedPlatform !== null || showFavoritesOnly || searchQuery.trim() !== "") && (
                     <Button
                       variant="outline"
                       className="w-full"
                       onClick={() => {
                         setSelectedCategory(null);
                         setSelectedPlatform(null);
+                        setShowFavoritesOnly(false);
                         setSearchQuery("");
                         setFiltersOpen(false);
                       }}
@@ -531,6 +571,22 @@ const Index = () => {
               )}
             </div>
             <Separator />
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-gray-500">{t("app.favorites")}</div>
+              <Button
+                type="button"
+                variant={showFavoritesOnly ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "rounded-full",
+                  showFavoritesOnly && "border-transparent bg-amber-500 hover:bg-amber-600",
+                )}
+                onClick={() => setShowFavoritesOnly((prev) => !prev)}
+              >
+                <Star className={cn("mr-2 h-4 w-4", showFavoritesOnly && "fill-current")} />
+                {t("app.favoritesOnly")}
+              </Button>
+            </div>
             <div className="relative max-w-xl">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
@@ -562,13 +618,14 @@ const Index = () => {
                 onSelectCategory={setSelectedCategory}
               />
             </div> */}
-            {(selectedCategory !== null || selectedPlatform !== null || searchQuery.trim() !== "") && (
+            {(selectedCategory !== null || selectedPlatform !== null || showFavoritesOnly || searchQuery.trim() !== "") && (
               <Button
                 variant="outline"
                 className="rounded-full border-gray-200 hover:border-indigo-200 hover:bg-indigo-50"
                 onClick={() => {
                   setSelectedCategory(null);
                   setSelectedPlatform(null);
+                  setShowFavoritesOnly(false);
                   setSearchQuery("");
                 }}
               >
@@ -585,7 +642,7 @@ const Index = () => {
               {t("app.showing", { visible: filteredLinks.length, total: links.length })}{" "}
               {links.length === 1 ? t("app.link") : t("app.links")}
             </span>
-            {(selectedCategory !== null || selectedPlatform !== null || searchQuery.trim() !== "") && (
+            {(selectedCategory !== null || selectedPlatform !== null || showFavoritesOnly || searchQuery.trim() !== "") && (
               <Badge className="bg-primary/10 text-primary hover:bg-primary/10">{t("common.filtered")}</Badge>
             )}
 
@@ -668,6 +725,7 @@ const Index = () => {
                       <span>{t("app.filterCategory", { name: selectedCategoryName })} </span>
                     )}
                     {selectedPlatform && <span>{t("app.filterPlatform", { name: selectedPlatform })} </span>}
+                    {showFavoritesOnly && <span>{t("app.filterFavorites")} </span>}
                     {searchQuery.trim() && (
                       <span>{t("app.filterSearch", { query: searchQuery.trim() })}</span>
                     )}
@@ -727,22 +785,31 @@ const Index = () => {
               <Bookmark className="h-8 w-8 text-primary/60" />
             </div>
             <h3 className="mb-2 text-xl font-bold text-gray-900">
-              {links.length === 0 ? t("app.noLinksYet") : t("app.noLinksMatch")}
+              {links.length === 0
+                ? t("app.noLinksYet")
+                : showFavoritesOnly && stats.favoriteLinks === 0
+                  ? t("app.noFavoritesYet")
+                  : t("app.noLinksMatch")}
             </h3>
             <p className="mb-6 text-gray-500">
-              {links.length === 0 ? t("app.noLinksYetDesc") : t("app.noLinksMatchDesc")}
+              {links.length === 0
+                ? t("app.noLinksYetDesc")
+                : showFavoritesOnly && stats.favoriteLinks === 0
+                  ? t("app.noFavoritesYetDesc")
+                  : t("app.noLinksMatchDesc")}
             </p>
             <div className="flex items-center justify-center gap-2 flex-wrap">
               {links.length === 0 && (
                 <AddLinkDialog categories={categories} onLinkAdded={fetchData} onCategoriesChange={fetchData} />
               )}
-              {(links.length > 0 || searchQuery.trim() !== "" || selectedCategory || selectedPlatform) && (
+              {(links.length > 0 || searchQuery.trim() !== "" || selectedCategory || selectedPlatform || showFavoritesOnly) && (
                 <Button
                   variant="outline"
                   className="rounded-full border-gray-200 hover:border-indigo-200 hover:bg-indigo-50"
                   onClick={() => {
                     setSelectedCategory(null);
                     setSelectedPlatform(null);
+                    setShowFavoritesOnly(false);
                     setSearchQuery("");
                   }}
                 >
@@ -765,9 +832,11 @@ const Index = () => {
                 url={link.url}
                 description={link.description}
                 platform={link.platform}
+                isFavorite={link.isFavorite}
                 category={link.categories}
                 categories={categories}
                 onDelete={fetchData}
+                onFavoriteChange={handleFavoriteChange}
                 onEdit={setLinkToEdit}
               />
               </div>

@@ -11,7 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { extractUrlMetadata, detectPlatformFromUrl } from "@/lib/urlMetadata";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { formFieldClass } from "@/lib/formStyles";
+import { formFieldClass, formSelectTriggerClass } from "@/lib/formStyles";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { TranslationKey } from "@/i18n";
 
 interface Category {
@@ -28,6 +29,7 @@ interface LinkToEdit {
   description?: string;
   platform: string;
   category_id?: string;
+  isFavorite?: boolean;
 }
 
 interface AddLinkDialogProps {
@@ -105,6 +107,7 @@ export const AddLinkDialog = ({
   const [platform, setPlatform] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [categoryName, setCategoryName] = useState("");
+  const [isFavorite, setIsFavorite] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchingMetadata, setFetchingMetadata] = useState(false);
   const { toast } = useToast();
@@ -123,6 +126,7 @@ export const AddLinkDialog = ({
       setPlatform(linkToEdit.platform);
       setCategoryId(linkToEdit.category_id || "");
       setCategoryName("");
+      setIsFavorite(linkToEdit.isFavorite ?? false);
     }
   }, [linkToEdit, open]);
 
@@ -140,6 +144,7 @@ export const AddLinkDialog = ({
     );
     setCategoryId(createPrefill.categoryId ?? "");
     setCategoryName(createPrefill.categoryName ?? "");
+    setIsFavorite(false);
     setOpen(true);
 
     // let parent clear URL params/state
@@ -155,6 +160,7 @@ export const AddLinkDialog = ({
       setPlatform("");
       setCategoryId("");
       setCategoryName("");
+      setIsFavorite(false);
     }
   }, [open]);
 
@@ -421,6 +427,7 @@ export const AddLinkDialog = ({
           description,
           platform,
           categoryId: finalCategoryId || undefined,
+          isFavorite,
         });
 
         toast({
@@ -435,6 +442,7 @@ export const AddLinkDialog = ({
           description,
           platform,
           categoryId: finalCategoryId || undefined,
+          isFavorite,
         });
 
         toast({
@@ -450,6 +458,7 @@ export const AddLinkDialog = ({
       setPlatform("");
       setCategoryId("");
       setCategoryName("");
+      setIsFavorite(false);
       setOpen(false);
       if (onEditComplete) {
         onEditComplete();
@@ -489,6 +498,7 @@ export const AddLinkDialog = ({
       setPlatform("");
       setCategoryId("");
       setCategoryName("");
+      setIsFavorite(false);
       // Notify parent that edit is complete
       if (isEditMode && onEditComplete) {
         onEditComplete();
@@ -560,7 +570,7 @@ export const AddLinkDialog = ({
           <div className="space-y-2">
             <Label htmlFor="platform" className="text-gray-700">{t("addLink.platform")}</Label>
             <Select value={platform} onValueChange={setPlatform} required>
-              <SelectTrigger className={formFieldClass}>
+              <SelectTrigger className={formSelectTriggerClass}>
                 <SelectValue placeholder={t("addLink.selectPlatform")} />
               </SelectTrigger>
               <SelectContent>
@@ -576,7 +586,7 @@ export const AddLinkDialog = ({
             <Label htmlFor="category" className="text-gray-700">{t("addLink.categoryOptional")}</Label>
             <div className="space-y-2">
               <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger className={formFieldClass}>
+                <SelectTrigger className={formSelectTriggerClass}>
                   <SelectValue placeholder={t("addLink.selectCategory")} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[min(60vh,320px)]">
@@ -617,6 +627,16 @@ export const AddLinkDialog = ({
               className={formFieldClass}
               rows={3}
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="isFavorite"
+              checked={isFavorite}
+              onCheckedChange={(checked) => setIsFavorite(checked === true)}
+            />
+            <Label htmlFor="isFavorite" className="cursor-pointer text-sm font-normal text-gray-700">
+              {t("addLink.markAsFavorite")}
+            </Label>
           </div>
           <Button type="submit" disabled={loading} className="w-full rounded-full">
             {loading

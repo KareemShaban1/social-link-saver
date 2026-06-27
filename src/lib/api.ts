@@ -88,11 +88,13 @@ class ApiClient {
     categoryId?: string;
     platform?: string;
     search?: string;
+    favorite?: boolean;
   }) {
     const params = new URLSearchParams();
     if (filters?.categoryId) params.append('categoryId', filters.categoryId);
     if (filters?.platform) params.append('platform', filters.platform);
     if (filters?.search) params.append('search', filters.search);
+    if (filters?.favorite) params.append('favorite', 'true');
 
     const query = params.toString();
     const response = await this.request<{ links: any[] }>(
@@ -104,6 +106,8 @@ class ApiClient {
         ...link,
         category_id: link.categoryId,
         categoryId: link.categoryId,
+        isFavorite: link.isFavorite ?? link.is_favorite ?? false,
+        is_favorite: link.isFavorite ?? link.is_favorite ?? false,
       })),
     };
   }
@@ -118,6 +122,7 @@ class ApiClient {
     description?: string;
     platform: string;
     categoryId?: string;
+    isFavorite?: boolean;
   }) {
     return this.request<{ link: any }>('/links', {
       method: 'POST',
@@ -133,6 +138,7 @@ class ApiClient {
       description?: string;
       platform?: string;
       categoryId?: string;
+      isFavorite?: boolean;
     }
   ) {
     return this.request<{ link: any }>(`/links/${id}`, {
