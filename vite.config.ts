@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => ({
         "icons/apple-touch-icon.png",
       ],
       manifest: {
-        id: "/socialsaver-pwa-v4",
+        id: "/socialsaver-pwa-v5",
         name: "SocialSaver",
         short_name: "SocialSaver",
         description: "Save, organize, and access your social media links.",
@@ -46,6 +46,8 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,svg,png,ico,webmanifest}"],
         cleanupOutdatedCaches: true,
