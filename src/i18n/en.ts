@@ -210,6 +210,9 @@ export const en = {
     statsTitle: "Dashboard statistics",
     statsDesc:
       "Current numbers for your library. Totals reflect all saved links; visibility counts respect active filters.",
+    refreshStats: "Refresh",
+    favoritesCard: "Favorites",
+    favoritesDetail: "{{count}} of {{total}} links starred",
     totalLinksCard: "Total links",
     visibleWithFilters: "{{count}} visible with current filters",
     categorizedCard: "Categorized",

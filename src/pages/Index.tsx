@@ -28,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Bookmark, Filter, BarChart3, FolderTree, Tags, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Bookmark, Filter, BarChart3, FolderTree, Tags, Star, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -156,28 +156,27 @@ const Index = () => {
   } | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statsModalOpen, setStatsModalOpen] = useState(false);
+  const [statsRefreshing, setStatsRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options?: { silent?: boolean }) => {
     if (!user) return;
 
-    setLoading(true);
-    
+    const silent = options?.silent ?? false;
+    if (!silent) setLoading(true);
+    else setStatsRefreshing(true);
+
     try {
-      // Fetch categories
       const { categories: categoriesData } = await api.getCategories();
       if (categoriesData) {
-        // api.getCategories already normalizes parent_id
         setCategories(categoriesData);
       }
 
-      // Fetch links
       const { links: linksData } = await api.getLinks();
       if (linksData) {
-        // Transform links to match expected format
         const transformedLinks = (linksData as ApiLink[]).map((link) => ({
           ...link,
-          isFavorite: link.isFavorite ?? false,
+          isFavorite: Boolean(link.isFavorite ?? (link as { is_favorite?: boolean }).is_favorite ?? false),
           category_id: link.categoryId ?? link.category_id ?? undefined,
           categories: link.category ? {
             name: link.category.name,
@@ -189,7 +188,8 @@ const Index = () => {
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+      else setStatsRefreshing(false);
     }
   }, [user]);
 
@@ -198,6 +198,12 @@ const Index = () => {
       fetchData();
     }
   }, [user, fetchData]);
+
+  useEffect(() => {
+    if (statsModalOpen && user) {
+      void fetchData({ silent: true });
+    }
+  }, [statsModalOpen, user, fetchData]);
 
   // Bookmarklet/share flow:
   // Open "Add Link" dialog prefilled from query params like:
@@ -780,8 +786,25 @@ const Index = () => {
           <DialogContent className="max-h-[min(90vh,640px)] max-w-lg gap-0 overflow-hidden rounded-2xl border-gray-100 p-0 sm:max-w-lg">
             <div className="max-h-[min(90vh,640px)] overflow-y-auto p-6">
               <DialogHeader className="text-left">
-                <DialogTitle className="text-gray-900">{t("app.statsTitle")}</DialogTitle>
-                <DialogDescription className="text-gray-500">{t("app.statsDesc")}</DialogDescription>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <DialogTitle className="text-gray-900">{t("app.statsTitle")}</DialogTitle>
+                    <DialogDescription className="text-gray-500">{t("app.statsDesc")}</DialogDescription>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 rounded-full"
+                    disabled={statsRefreshing}
+                    onClick={() => {
+                      void fetchData({ silent: true });
+                    }}
+                  >
+                    <RefreshCw className={cn("mr-2 h-4 w-4", statsRefreshing && "animate-spin")} />
+                    {t("app.refreshStats")}
+                  </Button>
+                </div>
               </DialogHeader>
               <div className="mt-4 space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -793,6 +816,19 @@ const Index = () => {
                       <p className="text-2xl font-extrabold text-primary">{stats.totalLinks}</p>
                       <p className="mt-1 text-xs text-gray-500">
                         {t("app.visibleWithFilters", { count: stats.visibleLinks })}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="rounded-xl border-gray-100 shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs font-medium text-gray-500">{t("app.favoritesCard")}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-extrabold text-amber-500">{stats.favoriteLinks}</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {stats.totalLinks > 0
+                          ? t("app.favoritesDetail", { count: stats.favoriteLinks, total: stats.totalLinks })
+                          : t("app.noFavoritesYetDesc")}
                       </p>
                     </CardContent>
                   </Card>
@@ -823,7 +859,7 @@ const Index = () => {
                       </p>
                     </CardContent>
                   </Card>
-                  <Card className="rounded-xl border-gray-100 shadow-sm">
+                  <Card className="rounded-xl border-gray-100 shadow-sm sm:col-span-2">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-xs font-medium text-gray-500">{t("app.categoriesCard")}</CardTitle>
                     </CardHeader>

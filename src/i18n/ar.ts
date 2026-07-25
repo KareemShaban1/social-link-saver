@@ -206,6 +206,9 @@ export const ar: TranslationSchema = {
     statsTitle: "إحصائيات لوحة التحكم",
     statsDesc:
       "أرقام مكتبتك الحالية. الإجمالي يعكس كل الروابط المحفوظة؛ الظاهر يحترم الفلاتر النشطة.",
+    refreshStats: "تحديث",
+    favoritesCard: "المفضلة",
+    favoritesDetail: "{{count}} من {{total}} رابط مُميّز",
     totalLinksCard: "إجمالي الروابط",
     visibleWithFilters: "{{count}} ظاهر مع الفلاتر الحالية",
     categorizedCard: "مصنّفة",
