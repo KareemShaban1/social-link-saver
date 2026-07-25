@@ -20,6 +20,8 @@ export const ar: TranslationSchema = {
     success: "نجاح",
     filtered: "مفلتر",
     active: "نشط",
+    previous: "السابق",
+    next: "التالي",
     optional: "اختياري",
     openMenu: "فتح القائمة",
     closeMenu: "إغلاق القائمة",
@@ -36,6 +38,7 @@ export const ar: TranslationSchema = {
   nav: {
     home: "الرئيسية",
     features: "المميزات",
+    stats: "الإحصائيات",
     howItWorks: "كيف يعمل",
     pricing: "الأسعار",
     blog: "المدونة",
@@ -67,6 +70,19 @@ export const ar: TranslationSchema = {
       cloudSync: "مزامنة سحابية",
       secure100: "آمن 100%",
       unlimitedLinks: "روابط بلا حدود",
+    },
+    stats: {
+      label: "المجتمع",
+      title: "ننمو معاً، رابطاً تلو الآخر",
+      subtitle:
+        "أرقام حقيقية من مجتمع سوشال سيفر — روابط تُحفظ وتُنظّم وتُفتح كل يوم.",
+      totalLinks: "روابط محفوظة",
+      totalUsers: "مستخدمون نشطون",
+      totalCategories: "فئات مُنشأة",
+      totalPlatforms: "منصات مدعومة",
+      linksLast24Hours: "روابط محفوظة خلال 24 ساعة",
+      live: "مباشر",
+      footer: "تتحدّث الإحصائيات فوراً مع نمو المجتمع.",
     },
     features: {
       label: "المميزات",
@@ -185,6 +201,8 @@ export const ar: TranslationSchema = {
     platform: "المنصة",
     category: "الفئة",
     showing: "عرض {{visible}} من {{total}} رابط",
+    showingRange: "عرض {{from}}–{{to}} من {{total}} رابط",
+    pageOf: "صفحة {{current}} من {{total}}",
     statsTitle: "إحصائيات لوحة التحكم",
     statsDesc:
       "أرقام مكتبتك الحالية. الإجمالي يعكس كل الروابط المحفوظة؛ الظاهر يحترم الفلاتر النشطة.",

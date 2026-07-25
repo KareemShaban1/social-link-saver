@@ -1,6 +1,7 @@
 import express, { type Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import prisma from '../lib/prisma.js';
+import { parseOptionalBoolean, parseRequiredBoolean } from '../lib/linkUtils.js';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware.js';
 import { extractMetadataWithAI } from '../lib/aiMetadata.js';
 
@@ -61,6 +62,46 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// Toggle favorite (must be before generic /:id routes)
+router.patch('/:id/favorite', async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const { id } = req.params;
+    const isFavorite = parseRequiredBoolean(req.body?.isFavorite);
+
+    if (isFavorite === undefined) {
+      return res.status(400).json({ error: 'isFavorite must be true or false' });
+    }
+
+    const existingLink = await prisma.link.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existingLink) {
+      return res.status(404).json({ error: 'Link not found' });
+    }
+
+    const link = await prisma.link.update({
+      where: { id },
+      data: { isFavorite },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+          },
+        },
+      },
+    });
+
+    res.json({ link });
+  } catch (error) {
+    console.error('Toggle favorite error:', error);
+    res.status(500).json({ error: 'Failed to update favorite' });
+  }
+});
+
 // Get single link
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
@@ -103,7 +144,6 @@ router.post(
     body('description').optional().trim(),
     body('platform').notEmpty().trim(),
     body('categoryId').optional().isUUID(),
-    body('isFavorite').optional().isBoolean(),
   ],
   async (req: AuthRequest, res: Response) => {
     try {
@@ -113,7 +153,8 @@ router.post(
       }
 
       const userId = req.userId!;
-      const { url, title, description, platform, categoryId, isFavorite } = req.body;
+      const { url, title, description, platform, categoryId } = req.body;
+      const isFavorite = parseOptionalBoolean(req.body?.isFavorite);
 
       // Verify category belongs to user if provided
       if (categoryId) {
@@ -167,7 +208,6 @@ router.put(
     body('description').optional().trim(),
     body('platform').optional().notEmpty().trim(),
     body('categoryId').optional().isUUID(),
-    body('isFavorite').optional().isBoolean(),
   ],
   async (req: AuthRequest, res: Response) => {
     try {
@@ -178,7 +218,8 @@ router.put(
 
       const userId = req.userId!;
       const { id } = req.params;
-      const { url, title, description, platform, categoryId, isFavorite } = req.body;
+      const { url, title, description, platform, categoryId } = req.body;
+      const isFavorite = parseOptionalBoolean(req.body?.isFavorite);
 
       // Check if link exists and belongs to user
       const existingLink = await prisma.link.findFirst({

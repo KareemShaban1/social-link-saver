@@ -168,4 +168,12 @@ All colors MUST be HSL.
     --accent-foreground: 243 75% 47%;
     color: #111827;
   }
+
+  .landing-page.font-arabic {
+    font-family: "Cairo", "Segoe UI", Tahoma, sans-serif;
+  }
+
+  .landing-page.font-arabic * {
+    font-family: inherit;
+  }
 }

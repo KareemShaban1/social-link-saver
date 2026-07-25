@@ -2,6 +2,17 @@
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+function normalizeLink(link: Record<string, unknown>) {
+  const isFavorite = Boolean(link.isFavorite ?? link.is_favorite ?? false);
+  return {
+    ...link,
+    category_id: link.categoryId,
+    categoryId: link.categoryId,
+    isFavorite,
+    is_favorite: isFavorite,
+  };
+}
+
 class ApiClient {
   private baseUrl: string;
   private token: string | null = null;
@@ -102,13 +113,7 @@ class ApiClient {
     );
     // Transform response to match frontend expectations
     return {
-      links: response.links.map((link: any) => ({
-        ...link,
-        category_id: link.categoryId,
-        categoryId: link.categoryId,
-        isFavorite: link.isFavorite ?? link.is_favorite ?? false,
-        is_favorite: link.isFavorite ?? link.is_favorite ?? false,
-      })),
+      links: response.links.map((link: any) => normalizeLink(link)),
     };
   }
 
@@ -141,10 +146,19 @@ class ApiClient {
       isFavorite?: boolean;
     }
   ) {
-    return this.request<{ link: any }>(`/links/${id}`, {
+    const response = await this.request<{ link: any }>(`/links/${id}`, {
       method: 'PUT',
       body: JSON.stringify(link),
     });
+    return { link: normalizeLink(response.link) };
+  }
+
+  async toggleLinkFavorite(id: string, isFavorite: boolean) {
+    const response = await this.request<{ link: any }>(`/links/${id}/favorite`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isFavorite }),
+    });
+    return { link: normalizeLink(response.link) };
   }
 
   async deleteLink(id: string) {

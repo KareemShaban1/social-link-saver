@@ -225,16 +225,16 @@ export const LinkCard = ({
 
   const handleToggleFavorite = async () => {
     const next = !favorite;
-    setFavorite(next);
     setTogglingFavorite(true);
     try {
-      await api.updateLink(id, { isFavorite: next });
+      const { link } = await api.toggleLinkFavorite(id, next);
+      const saved = Boolean(link.isFavorite);
+      setFavorite(saved);
       toast({
-        title: next ? t("linkCard.favoriteAdded") : t("linkCard.favoriteRemoved"),
+        title: saved ? t("linkCard.favoriteAdded") : t("linkCard.favoriteRemoved"),
       });
-      onFavoriteChange?.(id, next);
+      onFavoriteChange?.(id, saved);
     } catch (error: unknown) {
-      setFavorite(!next);
       const message = error instanceof Error ? error.message : t("linkCard.favoriteFailed");
       toast({
         title: t("common.error"),

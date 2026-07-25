@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 const navLinkKeys = [
   { key: "nav.home" as const, href: "/#home" },
   { key: "nav.features" as const, href: "/#features" },
+  { key: "nav.stats" as const, href: "/#stats" },
   { key: "nav.howItWorks" as const, href: "/#how-it-works" },
   { key: "nav.contact" as const, href: "/contact", route: true },
 ];

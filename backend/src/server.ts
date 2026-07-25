@@ -8,6 +8,7 @@ import categoryRoutes from './routes/category.routes.js';
 import userRoutes from './routes/user.routes.js';
 import metadataRoutes, { handleFacebookResolveUrl } from './routes/metadata.routes.js';
 import publicRoutes from './routes/public.routes.js';
+import { ensureLinksFavoritesColumn } from './lib/ensureSchema.js';
 
 dotenv.config();
 
@@ -29,7 +30,7 @@ const corsOptions = {
         FRONTEND_URL
       ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   optionsSuccessStatus: 200
 };
@@ -68,7 +69,8 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  await ensureLinksFavoritesColumn();
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 Frontend URL: ${FRONTEND_URL}`);
 });

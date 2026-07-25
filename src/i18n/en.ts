@@ -18,6 +18,8 @@ export const en = {
     success: "Success",
     filtered: "Filtered",
     active: "active",
+    previous: "Previous",
+    next: "Next",
     optional: "optional",
     openMenu: "Open menu",
     closeMenu: "Close menu",
@@ -34,6 +36,7 @@ export const en = {
   nav: {
     home: "Home",
     features: "Features",
+    stats: "Stats",
     howItWorks: "How It Works",
     pricing: "Pricing",
     blog: "Blog",
@@ -65,6 +68,19 @@ export const en = {
       cloudSync: "Cloud Sync",
       secure100: "100% Secure",
       unlimitedLinks: "Unlimited Links",
+    },
+    stats: {
+      label: "Community",
+      title: "Growing together, one link at a time",
+      subtitle:
+        "Real numbers from the SocialSaver community — links saved, organized, and accessed every day.",
+      totalLinks: "Links saved",
+      totalUsers: "Active users",
+      totalCategories: "Categories created",
+      totalPlatforms: "Platforms supported",
+      linksLast24Hours: "Links saved in the last 24 hours",
+      live: "Live",
+      footer: "Stats update in real time as the community grows.",
     },
     features: {
       label: "Features",
@@ -189,6 +205,8 @@ export const en = {
     platform: "Platform",
     category: "Category",
     showing: "Showing {{visible}} of {{total}} links",
+    showingRange: "Showing {{from}}–{{to}} of {{total}} links",
+    pageOf: "Page {{current}} of {{total}}",
     statsTitle: "Dashboard statistics",
     statsDesc:
       "Current numbers for your library. Totals reflect all saved links; visibility counts respect active filters.",
