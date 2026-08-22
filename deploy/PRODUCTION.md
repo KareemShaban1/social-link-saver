@@ -10,7 +10,7 @@ Site: https://social-link-saver.kareemsoft.org/app
 | Wrong `VITE_API_URL` at build time | API calls fail or hit localhost |
 | Backend not restarted | Favorites, stats API errors; old behavior |
 | DB migration not run | `is_favorite` column missing → 500 on links |
-| PWA / browser cache | Old JavaScript still runs after deploy |
+| PWA / browser cache | Old JavaScript still runs after deploy — users see a **Reload** toast when a new version is ready |
 | `npm start` while app already on 3007 | Build succeeds but new code never runs |
 
 ## One-time: production `.env` (project root)

@@ -423,4 +423,9 @@ export const ar: TranslationSchema = {
     successDesc: "رسالتك جاهزة للإرسال. إذا لم يُفتح شيء، راسلنا على {{email}}.",
     emailBodyIntro: "من: {{name}} ({{email}})",
   },
+  pwa: {
+    updateTitle: "تحديث متاح",
+    updateDescription: "نسخة جديدة جاهزة. أعد التحميل للحصول على آخر التغييرات.",
+    reload: "إعادة التحميل",
+  },
 };

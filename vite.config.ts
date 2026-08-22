@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => ({
         "icons/apple-touch-icon.png",
       ],
       manifest: {
-        id: "/socialsaver-pwa-v5",
+        id: "/socialsaver-pwa-v6",
         name: "SocialSaver",
         short_name: "SocialSaver",
         description: "Save, organize, and access your social media links.",
@@ -57,24 +57,13 @@ export default defineConfig(({ mode }) => ({
             handler: "NetworkFirst",
             options: {
               cacheName: "pages-cache",
-              networkTimeoutSeconds: 3,
+              networkTimeoutSeconds: 10,
               expiration: {
-                maxEntries: 20,
-                maxAgeSeconds: 60 * 60 * 24 * 7,
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24,
               },
-            },
-          },
-          {
-            urlPattern: ({ request }) =>
-              request.destination === "style" ||
-              request.destination === "script" ||
-              request.destination === "worker",
-            handler: "StaleWhileRevalidate",
-            options: {
-              cacheName: "asset-cache",
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30,
+              cacheableResponse: {
+                statuses: [0, 200],
               },
             },
           },

@@ -29,5 +29,6 @@ else
   echo "PM2 not found — restart your Node app in aaPanel (port 3007), do NOT run 'npm start' twice."
 fi
 
-echo "==> Done. Hard-refresh the site (Ctrl+Shift+R) or clear site data for PWA cache."
+echo "==> Done. After deploy, mobile/PWA users get a Reload toast when an update is ready."
+echo "    If still stale once: clear site data or reinstall the home-screen app."
 echo "    Health: curl -s http://127.0.0.1:3007/health"

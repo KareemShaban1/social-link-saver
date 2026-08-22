@@ -426,6 +426,11 @@ export const en = {
     successDesc: "Your message is ready to send. If nothing opens, email us at {{email}}.",
     emailBodyIntro: "From: {{name}} ({{email}})",
   },
+  pwa: {
+    updateTitle: "Update available",
+    updateDescription: "A new version is ready. Reload to get the latest changes.",
+    reload: "Reload",
+  },
 } as const;
 
 export type TranslationSchema = typeof en;
