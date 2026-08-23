@@ -21,7 +21,8 @@ export default defineConfig(({ mode }) => ({
         "icons/apple-touch-icon.png",
       ],
       manifest: {
-        id: "/socialsaver-pwa-v6",
+        // Bump id when forcing clients off a stuck old cache after theme/UI deploys.
+        id: "/socialsaver-pwa-v7",
         name: "SocialSaver",
         short_name: "SocialSaver",
         description: "Save, organize, and access your social media links.",

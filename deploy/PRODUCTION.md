@@ -10,8 +10,19 @@ Site: https://social-link-saver.kareemsoft.org/app
 | Wrong `VITE_API_URL` at build time | API calls fail or hit localhost |
 | Backend not restarted | Favorites, stats API errors; old behavior |
 | DB migration not run | `is_favorite` column missing → 500 on links |
-| PWA / browser cache | Old JavaScript still runs after deploy — users see a **Reload** toast when a new version is ready |
+| Prisma P3009 failed migration | `20250627120000_add_link_favorites` stuck as failed — run fix below |
+| PWA / browser cache | **Incognito shows new UI, normal tabs / mobile do not** — old service worker serving cached CSS/JS |
+| `sw.js` cached by Nginx | Mobile never picks up deploys — add `deploy/nginx-static-cache.snippet.conf` |
 | `npm start` while app already on 3007 | Build succeeds but new code never runs |
+
+### Clear stuck cache (one-time per device)
+
+**Desktop (normal tab):** DevTools → Application → Service Workers → Unregister → Clear site data → hard refresh (`Ctrl+Shift+R`).
+
+**Mobile Chrome:** Site lock icon / ⋮ → Site settings → Clear & reset → reload.  
+If installed to home screen: remove the icon, clear site data, open in browser once, then re-add.
+
+**Mobile Safari / iOS:** Settings → Safari → Advanced → Website Data → remove the domain (or Clear History and Website Data), then reopen. Home-screen apps keep their own cache — delete the icon and open via Safari.
 
 ## One-time: production `.env` (project root)
 
@@ -53,10 +64,41 @@ npm install && npm run build
 pm2 restart all   # or restart in aaPanel — do NOT npm start if port 3007 is in use
 ```
 
+## Fix P3009: failed favorites migration
+
+If deploy stops with:
+
+```text
+Error: P3009
+The `20250627120000_add_link_favorites` migration ... failed
+```
+
+The `is_favorite` column was likely already added by the app at startup (`ensureSchema.ts`), so Prisma recorded the migration as failed.
+
+**Quick fix (run once on server):**
+
+```bash
+cd /www/wwwroot/social-link-saver.kareemsoft.org
+chmod +x deploy/fix-failed-migration.sh
+./deploy/fix-failed-migration.sh
+./deploy/production-deploy.sh
+```
+
+**Or manually:**
+
+```bash
+cd /www/wwwroot/social-link-saver.kareemsoft.org/backend
+npx prisma migrate resolve --applied 20250627120000_add_link_favorites
+npx prisma migrate deploy
+cd ..
+./deploy/production-deploy.sh
+```
+
 ## Nginx
 
 - Static files: serve from `dist/` (index.html + assets)
 - API: proxy `/api` → `http://127.0.0.1:3007` (see `deploy/nginx-api-baota.snippet.conf`)
+- **Required for reliable UI updates:** add `deploy/nginx-static-cache.snippet.conf` so `sw.js` and `index.html` are never long-cached
 
 ## Verify
 

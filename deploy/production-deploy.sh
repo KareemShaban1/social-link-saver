@@ -9,7 +9,21 @@ echo "==> Backend: install, build, migrate"
 cd backend
 npm ci
 npm run build
-npx prisma migrate deploy
+
+echo "==> Database: ensure favorites column (idempotent)"
+node -e "
+import 'dotenv/config';
+import { ensureLinksFavoritesColumn } from './dist/lib/ensureSchema.js';
+import prisma from './dist/lib/prisma.js';
+await ensureLinksFavoritesColumn();
+await prisma.\$disconnect();
+"
+
+if ! npx prisma migrate deploy; then
+  echo "==> Migration failed — resolving known add_link_favorites failure (P3009)..."
+  npx prisma migrate resolve --applied 20250627120000_add_link_favorites
+  npx prisma migrate deploy
+fi
 cd "$ROOT"
 
 echo "==> Frontend: ensure production API URL in .env"
