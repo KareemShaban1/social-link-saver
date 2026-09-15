@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, ClipboardPaste } from "lucide-react";
 import { api } from "@/lib/api";
@@ -15,7 +14,10 @@ import { needsFacebookShareResolution } from "@/lib/videoUtils";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { formFieldClass, formSelectTriggerClass } from "@/lib/formStyles";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { TranslationKey } from "@/i18n";
+import { VoiceTextField } from "@/components/VoiceTextField";
+import { stopAllSpeechToText } from "@/hooks/useSpeechToText";
+import { persistSpeechLocale, readStoredSpeechLocale } from "@/lib/speechRecognition";
+import type { Locale, TranslationKey } from "@/i18n";
 
 interface Category {
   id: string;
@@ -113,7 +115,8 @@ export const AddLinkDialog = ({
   const [loading, setLoading] = useState(false);
   const [fetchingMetadata, setFetchingMetadata] = useState(false);
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const [speechLocale, setSpeechLocale] = useState<Locale>(() => readStoredSpeechLocale(locale));
 
   const isEditMode = !!linkToEdit;
   const titleTouchedRef = useRef(false);
@@ -163,9 +166,15 @@ export const AddLinkDialog = ({
     onCreatePrefillConsumed?.();
   }, [isEditMode, createPrefill, onCreatePrefillConsumed]);
 
+  const handleSpeechLocaleChange = (next: Locale) => {
+    persistSpeechLocale(next);
+    setSpeechLocale(next);
+  };
+
   // Reset form when dialog closes
   useEffect(() => {
     if (!open) {
+      stopAllSpeechToText();
       fetchGenerationRef.current += 1;
       titleTouchedRef.current = false;
       descriptionTouchedRef.current = false;
@@ -576,16 +585,19 @@ export const AddLinkDialog = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title" className="text-gray-700">{t("addLink.title")}</Label>
-            <Input
+            <VoiceTextField
               id="title"
               value={title}
-              onChange={(e) => {
+              onChange={(next) => {
                 titleTouchedRef.current = true;
-                setTitle(e.target.value);
+                setTitle(next);
               }}
               placeholder={t("addLink.titlePlaceholder")}
               className={formFieldClass}
               required
+              speechLocale={speechLocale}
+              onSpeechLocaleChange={handleSpeechLocaleChange}
+              enabled={open}
             />
           </div>
           <div className="space-y-2">
@@ -676,16 +688,20 @@ export const AddLinkDialog = ({
           </div>
           <div className="space-y-2">
             <Label htmlFor="description" className="text-gray-700">{t("addLink.descriptionOptional")}</Label>
-            <Textarea
+            <VoiceTextField
               id="description"
               value={description}
-              onChange={(e) => {
+              onChange={(next) => {
                 descriptionTouchedRef.current = true;
-                setDescription(e.target.value);
+                setDescription(next);
               }}
               placeholder={t("addLink.descriptionPlaceholder")}
               className={formFieldClass}
+              multiline
               rows={3}
+              speechLocale={speechLocale}
+              onSpeechLocaleChange={handleSpeechLocaleChange}
+              enabled={open}
             />
           </div>
           <div className="flex items-center gap-2">
