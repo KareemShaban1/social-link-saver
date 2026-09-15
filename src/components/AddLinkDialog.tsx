@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Loader2, Sparkles } from "lucide-react";
+import { Plus, ClipboardPaste } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { extractUrlMetadata, detectPlatformFromUrl } from "@/lib/urlMetadata";
+import { extractUrlFromSharePayload, isShareableHttpUrl } from "@/lib/pendingShare";
+import { needsFacebookShareResolution } from "@/lib/videoUtils";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { formFieldClass, formSelectTriggerClass } from "@/lib/formStyles";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -114,6 +116,11 @@ export const AddLinkDialog = ({
   const { t } = useTranslation();
 
   const isEditMode = !!linkToEdit;
+  const titleTouchedRef = useRef(false);
+  const descriptionTouchedRef = useRef(false);
+  const platformTouchedRef = useRef(false);
+  const lastFetchedUrlRef = useRef("");
+  const fetchGenerationRef = useRef(0);
 
   const categoriesForSelect = useMemo(() => flattenCategoriesTree(categories), [categories]);
 
@@ -135,6 +142,12 @@ export const AddLinkDialog = ({
     if (isEditMode) return;
     if (!createPrefill) return;
 
+    titleTouchedRef.current = false;
+    descriptionTouchedRef.current = false;
+    platformTouchedRef.current = false;
+    lastFetchedUrlRef.current =
+      createPrefill.url && createPrefill.title ? createPrefill.url : "";
+
     setTitle(createPrefill.title ?? "");
     setUrl(createPrefill.url ?? "");
     setDescription(createPrefill.description ?? "");
@@ -147,13 +160,17 @@ export const AddLinkDialog = ({
     setIsFavorite(false);
     setOpen(true);
 
-    // let parent clear URL params/state
     onCreatePrefillConsumed?.();
   }, [isEditMode, createPrefill, onCreatePrefillConsumed]);
 
   // Reset form when dialog closes
   useEffect(() => {
     if (!open) {
+      fetchGenerationRef.current += 1;
+      titleTouchedRef.current = false;
+      descriptionTouchedRef.current = false;
+      platformTouchedRef.current = false;
+      lastFetchedUrlRef.current = "";
       setTitle("");
       setUrl("");
       setDescription("");
@@ -255,123 +272,156 @@ export const AddLinkDialog = ({
     return colors[Math.floor(Math.random() * colors.length)];
   };
 
-  // Handle auto-fill from URL
-  const handleFetchFromUrl = async () => {
-    if (!url.trim()) {
-      toast({
-        title: t("addLink.noUrl"),
-        description: t("addLink.enterUrlFirst"),
-        variant: "destructive",
-      });
+  const handleFetchFromUrl = async (targetUrl?: string, options?: { silent?: boolean }) => {
+    const urlToFetch = (targetUrl ?? url).trim();
+    const silent = options?.silent ?? false;
+
+    if (!urlToFetch) {
+      if (!silent) {
+        toast({
+          title: t("addLink.noUrl"),
+          description: t("addLink.enterUrlFirst"),
+          variant: "destructive",
+        });
+      }
       return;
     }
 
-    // Validate URL format
-    try {
-      new URL(url);
-    } catch {
-      toast({
-        title: t("addLink.invalidUrl"),
-        description: t("addLink.enterValidUrl"),
-        variant: "destructive",
-      });
+    if (!isShareableHttpUrl(urlToFetch)) {
+      if (!silent) {
+        toast({
+          title: t("addLink.invalidUrl"),
+          description: t("addLink.enterValidUrl"),
+          variant: "destructive",
+        });
+      }
       return;
     }
 
+    const generation = ++fetchGenerationRef.current;
+    lastFetchedUrlRef.current = urlToFetch;
     setFetchingMetadata(true);
 
     try {
-      console.log("Fetching metadata for URL:", url);
-      const metadata = await extractUrlMetadata(url);
-      console.log("Extracted metadata:", metadata);
-      
-      // Auto-fill form fields
-      if (metadata.title) {
-        setTitle(metadata.title);
+      const metadata = await extractUrlMetadata(urlToFetch);
+      if (generation !== fetchGenerationRef.current) return;
+
+      if (metadata.title && !titleTouchedRef.current) {
+        setTitle((current) => (current.trim() ? current : metadata.title));
       }
-      if (metadata.description) {
-        setDescription(metadata.description);
+      if (metadata.description && !descriptionTouchedRef.current) {
+        setDescription((current) => (current.trim() ? current : metadata.description));
       }
-      if (metadata.platform) {
+      if (metadata.platform && !platformTouchedRef.current) {
         setPlatform(metadata.platform);
       }
 
-      // Auto-detect and create category based on platform
-      // First check if user provided a category name
       if (categoryName.trim()) {
         const newCategoryId = await findOrCreateCategory(categoryName.trim());
-        if (newCategoryId) {
-          setCategoryId(newCategoryId);
-        }
-      } else {
-        // Auto-create or select category based on platform
+        if (generation !== fetchGenerationRef.current) return;
+        if (newCategoryId) setCategoryId(newCategoryId);
+      } else if (!categoryId) {
         const suggestedCategory = metadata.platform;
-        if (suggestedCategory && suggestedCategory !== 'Other') {
-          // Refresh categories first to get the latest list
-          if (onCategoriesChange) {
-            await onCategoriesChange();
-            // Wait a moment for state to update
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-          
-          // Re-fetch categories from the updated list (we need to get fresh data)
-          // Since categories prop might not be updated yet, we'll query directly
-          if (user) {
-            const { categories: freshCategories } = await api.getCategories();
-            
-            const categoriesToUse = freshCategories || categories;
-            const existingCategory = categoriesToUse.find(
-              c => c.name.toLowerCase() === suggestedCategory.toLowerCase()
-            );
-            
-            if (existingCategory) {
-              // Category exists, use it
-              setCategoryId(existingCategory.id);
-              console.log("Using existing category:", existingCategory.name);
-            } else {
-              // Category doesn't exist, create it automatically
-              console.log("Creating new category:", suggestedCategory);
-              const newCategoryId = await findOrCreateCategory(suggestedCategory);
-              if (newCategoryId) {
-                setCategoryId(newCategoryId);
-              }
-            }
+        if (suggestedCategory && suggestedCategory !== "Other" && user) {
+          const { categories: freshCategories } = await api.getCategories();
+          if (generation !== fetchGenerationRef.current) return;
+
+          const categoriesToUse = freshCategories || categories;
+          const existingCategory = categoriesToUse.find(
+            (c) => c.name.toLowerCase() === suggestedCategory.toLowerCase(),
+          );
+
+          if (existingCategory) {
+            setCategoryId(existingCategory.id);
+          } else {
+            const newCategoryId = await findOrCreateCategory(suggestedCategory);
+            if (generation !== fetchGenerationRef.current) return;
+            if (newCategoryId) setCategoryId(newCategoryId);
           }
         }
       }
 
-      const successMessage = metadata.title 
-        ? `Fetched: ${metadata.title.substring(0, 50)}${metadata.title.length > 50 ? '...' : ''}`
-        : "Link metadata fetched successfully";
-      
-      toast({
-        title: t("common.success"),
-        description: successMessage,
-      });
+      if (!silent) {
+        const successMessage = metadata.title
+          ? t("addLink.metadataFetchedTitle", {
+              title: `${metadata.title.substring(0, 50)}${metadata.title.length > 50 ? "..." : ""}`,
+            })
+          : t("addLink.metadataFetched");
+        toast({
+          title: t("common.success"),
+          description: successMessage,
+        });
+      }
     } catch (error) {
       console.error("Error fetching metadata:", error);
-      toast({
-        title: t("common.error"),
-        description: t("addLink.metadataFailed"),
-        variant: "destructive",
-      });
-      // Still set platform from URL detection
-      const detectedPlatform = detectPlatformFromUrl(url);
-      setPlatform(detectedPlatform);
-      
-      // Still try to set category based on detected platform
-      if (detectedPlatform && detectedPlatform !== 'Other') {
-        const existingCategory = categories.find(
-          c => c.name.toLowerCase() === detectedPlatform.toLowerCase()
-        );
-        if (existingCategory) {
-          setCategoryId(existingCategory.id);
+      if (generation !== fetchGenerationRef.current) return;
+
+      if (!silent) {
+        toast({
+          title: t("common.error"),
+          description: t("addLink.metadataFailed"),
+          variant: "destructive",
+        });
+      }
+
+      if (!platformTouchedRef.current) {
+        const detectedPlatform = detectPlatformFromUrl(urlToFetch);
+        setPlatform(detectedPlatform);
+
+        if (!categoryId && detectedPlatform && detectedPlatform !== "Other") {
+          const existingCategory = categories.find(
+            (c) => c.name.toLowerCase() === detectedPlatform.toLowerCase(),
+          );
+          if (existingCategory) setCategoryId(existingCategory.id);
         }
       }
     } finally {
-      setFetchingMetadata(false);
+      if (generation === fetchGenerationRef.current) {
+        setFetchingMetadata(false);
+      }
     }
   };
+
+  const handlePasteLink = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const found = extractUrlFromSharePayload({ text, url: text });
+      if (!found) {
+        toast({
+          title: t("addLink.noUrl"),
+          description: t("addLink.pasteEmpty"),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      lastFetchedUrlRef.current = "";
+      setUrl(found);
+      if (!platformTouchedRef.current) {
+        setPlatform(detectPlatformFromUrl(found));
+      }
+    } catch {
+      toast({
+        title: t("common.error"),
+        description: t("addLink.pasteFailed"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!open || isEditMode) return;
+    const trimmed = url.trim();
+    if (!isShareableHttpUrl(trimmed)) return;
+    if (lastFetchedUrlRef.current === trimmed) return;
+
+    const timer = window.setTimeout(() => {
+      void handleFetchFromUrl(trimmed, { silent: true });
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, open, isEditMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -491,7 +541,11 @@ export const AddLinkDialog = ({
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     if (!newOpen) {
-      // Reset form when closing
+      fetchGenerationRef.current += 1;
+      titleTouchedRef.current = false;
+      descriptionTouchedRef.current = false;
+      platformTouchedRef.current = false;
+      lastFetchedUrlRef.current = "";
       setTitle("");
       setUrl("");
       setDescription("");
@@ -499,7 +553,6 @@ export const AddLinkDialog = ({
       setCategoryId("");
       setCategoryName("");
       setIsFavorite(false);
-      // Notify parent that edit is complete
       if (isEditMode && onEditComplete) {
         onEditComplete();
       }
@@ -526,7 +579,10 @@ export const AddLinkDialog = ({
             <Input
               id="title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                titleTouchedRef.current = true;
+                setTitle(e.target.value);
+              }}
               placeholder={t("addLink.titlePlaceholder")}
               className={formFieldClass}
               required
@@ -544,32 +600,33 @@ export const AddLinkDialog = ({
                 required
                 className={`flex-1 ${formFieldClass}`}
               />
-              
-	    {/* <Button
-                type="button"
-                variant="outline"
-                onClick={handleFetchFromUrl}
-                disabled={fetchingMetadata || !url.trim()}
-                className="shrink-0"
-              >
-                {fetchingMetadata ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Fetching...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Auto-fill
-                  </>
-                )}
-              </Button> */}
+              {!isEditMode && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void handlePasteLink()}
+                  disabled={fetchingMetadata}
+                  className="shrink-0"
+                >
+                  <ClipboardPaste className="me-2 h-4 w-4" />
+                  {t("addLink.pasteLink")}
+                </Button>
+              )}
             </div>
-            <p className="text-xs text-gray-400">{t("addLink.urlHint")}</p>
+            <p className="text-xs text-gray-400">
+              {fetchingMetadata ? t("addLink.fetching") : t("addLink.urlHint")}
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="platform" className="text-gray-700">{t("addLink.platform")}</Label>
-            <Select value={platform} onValueChange={setPlatform} required>
+            <Select
+              value={platform}
+              onValueChange={(value) => {
+                platformTouchedRef.current = true;
+                setPlatform(value);
+              }}
+              required
+            >
               <SelectTrigger className={formSelectTriggerClass}>
                 <SelectValue placeholder={t("addLink.selectPlatform")} />
               </SelectTrigger>
@@ -622,7 +679,10 @@ export const AddLinkDialog = ({
             <Textarea
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                descriptionTouchedRef.current = true;
+                setDescription(e.target.value);
+              }}
               placeholder={t("addLink.descriptionPlaceholder")}
               className={formFieldClass}
               rows={3}

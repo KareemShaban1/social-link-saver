@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CreditCard, LogOut, User } from "lucide-react";
+import { SaveFromAppsSheet } from "@/components/SaveFromAppsSheet";
 
 interface UserProfile {
   full_name: string | null;
@@ -262,8 +263,21 @@ const Account = () => {
           </section>
 
           <section
-            className="animate-fade-in-up rounded-2xl border border-gray-100 bg-white p-6 opacity-0 shadow-sm"
+            className="animate-fade-in-up rounded-2xl border border-gray-100 bg-white p-6 opacity-0 shadow-sm sm:p-8"
             style={{ animationDelay: "400ms", animationFillMode: "forwards" }}
+          >
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">{t("shareFromApps.title")}</h2>
+                <p className="text-sm text-gray-500">{t("shareFromApps.subtitle")}</p>
+              </div>
+              <SaveFromAppsSheet className="rounded-full" />
+            </div>
+          </section>
+
+          <section
+            className="animate-fade-in-up rounded-2xl border border-gray-100 bg-white p-6 opacity-0 shadow-sm"
+            style={{ animationDelay: "450ms", animationFillMode: "forwards" }}
           >
             <Button
               variant="destructive"

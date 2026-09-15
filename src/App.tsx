@@ -15,6 +15,8 @@ import Signup from "./pages/Signup";
 import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
+import { ShareInboundCapture, ShareTargetRedirect } from "@/components/ShareInboundCapture";
 
 const queryClient = new QueryClient();
 
@@ -23,13 +25,16 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <PwaUpdatePrompt />
+        <PwaInstallPrompt />
         <AuthProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <ShareInboundCapture />
             <Routes>
               <Route path="/" element={<Landing />} />
+              <Route path="/share-target" element={<ShareTargetRedirect />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />

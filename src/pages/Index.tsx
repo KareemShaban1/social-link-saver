@@ -37,7 +37,9 @@ import {
   PaginationLink,
 } from "@/components/ui/pagination";
 import { detectPlatformFromUrl, extractUrlMetadata } from "@/lib/urlMetadata";
+import { consumePendingShare } from "@/lib/pendingShare";
 import { cn } from "@/lib/utils";
+import { SaveFromAppsSheet } from "@/components/SaveFromAppsSheet";
 
 interface Link {
   id: string;
@@ -205,62 +207,53 @@ const Index = () => {
     }
   }, [statsModalOpen, user, fetchData]);
 
-  // Bookmarklet/share flow:
-  // Open "Add Link" dialog prefilled from query params like:
-  // ?add=1&url=...&title=...&description=...&platform=...
-	// If title/description are missing or low-quality, we try to improve them
-	// using extractUrlMetadata (OG tags, meta description, etc.).
+  // Bookmarklet / Android share target / iOS Shortcut:
+  // pending share is captured into sessionStorage before login redirects can drop query params.
   useEffect(() => {
     if (!user) return;
 
-    const params = new URLSearchParams(window.location.search);
-    const shouldAdd = params.get("add") === "1";
-    const urlParam = params.get("url") || "";
-    if (!shouldAdd || !urlParam) return;
+    const pending = consumePendingShare();
+    if (!pending?.url) return;
 
-	  const manualTitle = params.get("title") || undefined;
-	  const manualDescription = params.get("description") || undefined;
-	  const content = params.get("content") || undefined; // Raw content from bookmarklet
-    const platform = params.get("platform") || detectPlatformFromUrl(urlParam);
-    const categoryId = params.get("categoryId") || undefined;
-    const categoryName = params.get("categoryName") || undefined;
+    const urlParam = pending.url;
+    const manualTitle = pending.title;
+    const manualDescription = pending.description;
+    const content = pending.content;
+    const platform = pending.platform || detectPlatformFromUrl(urlParam);
+    const categoryId = pending.categoryId;
+    const categoryName = pending.categoryName;
 
-	  (async () => {
-		  let finalTitle = manualTitle;
-		  let finalDescription = manualDescription;
+    (async () => {
+      let finalTitle = manualTitle;
+      let finalDescription = manualDescription;
 
-		  // If bookmarklet/title looks generic or is missing, try to extract better metadata using AI
-		  const looksGenericTitle =
-			  !finalTitle ||
-			  ["linkedin", "facebook", "twitter", "x", "instagram"]
-				  .some((word) => finalTitle!.toLowerCase().includes(word) && finalTitle!.split(" ").length <= 3);
+      const looksGenericTitle =
+        !finalTitle ||
+        ["linkedin", "facebook", "twitter", "x", "instagram", "tiktok", "youtube"]
+          .some((word) => finalTitle!.toLowerCase().includes(word) && finalTitle!.split(" ").length <= 3);
 
-		  if (looksGenericTitle || !finalDescription || content) {
-			  try {
-				  // Pass content to AI service for better title/description generation
-				  const metadata = await extractUrlMetadata(urlParam, content);
-				  if (!finalTitle && metadata.title) {
-					  finalTitle = metadata.title;
-				  }
-				  if (!finalDescription && metadata.description) {
-					  finalDescription = metadata.description;
-				  }
-			  } catch (error) {
-				  console.error("Failed to auto-extract metadata for shared URL:", error);
-			  }
-		  }
+      if (looksGenericTitle || !finalDescription || content) {
+        try {
+          const metadata = await extractUrlMetadata(urlParam, content);
+          if (metadata.title && (!finalTitle || looksGenericTitle)) {
+            finalTitle = metadata.title;
+          }
+          if (!finalDescription && metadata.description) {
+            finalDescription = metadata.description;
+          }
+        } catch (error) {
+          console.error("Failed to auto-extract metadata for shared URL:", error);
+        }
+      }
 
-	    setCreatePrefill({
-		    url: urlParam,
-	      title: finalTitle,
-	      description: finalDescription,
-	      platform,
-	      categoryId,
-	      categoryName,
+      setCreatePrefill({
+        url: urlParam,
+        title: finalTitle,
+        description: finalDescription,
+        platform,
+        categoryId,
+        categoryName,
       });
-
-	    // Remove query params to avoid re-opening on refresh
-	    window.history.replaceState({}, "", window.location.pathname);
     })();
   }, [user]);
 
@@ -436,6 +429,7 @@ const Index = () => {
             createPrefill={createPrefill}
             onCreatePrefillConsumed={() => setCreatePrefill(null)}
           />
+          <SaveFromAppsSheet />
           <CategoryManager categories={categories} onCategoriesChange={fetchData} />
           <Button
             type="button"
