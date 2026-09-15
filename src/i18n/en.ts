@@ -445,6 +445,15 @@ export const en = {
     androidStep1: "Install SocialSaver to your home screen (use the install prompt or Chrome menu → Install app).",
     androidStep2: "Open the post in the social app and tap Share.",
     androidStep3: "Choose SocialSaver. Review the prefilled link and tap Save.",
+    androidPinTitle: "Show SocialSaver on the first Share row",
+    androidPinIntro:
+      "Android chooses the top row (you cannot force this from the app). After you share to SocialSaver once, pin it so it stays on the first page.",
+    androidPinStep1: "Share any link to SocialSaver at least once (via More if needed).",
+    androidPinStep2:
+      "Open Share again, find SocialSaver, then long-press its icon → Pin or Add to Favorites (wording varies by phone).",
+    androidPinStep3:
+      "On Samsung: Share panel → ⋮ or Edit → drag SocialSaver into Favorites. On Pixel/stock Android: long-press the target in the direct-share row.",
+    androidPinNote: "Sharing to SocialSaver more often also moves it up automatically over time.",
     iosTitle: "iPhone (Shortcuts)",
     iosStep1: "Open the Shortcuts app → New Shortcut.",
     iosStep2: "Add Receive URLs and Text from Share Sheet, then Get URLs from Input.",

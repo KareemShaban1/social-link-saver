@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => ({
       ],
       manifest: {
         // Bump id when forcing clients off a stuck old cache after theme/UI deploys.
-        id: "/socialsaver-pwa-v9",
+        id: "/socialsaver-pwa-v10",
         name: "SocialSaver",
         short_name: "SocialSaver",
         description: "Save, organize, and access your social media links.",
@@ -40,6 +40,13 @@ export default defineConfig(({ mode }) => ({
             text: "text",
             url: "url",
           },
+          icons: [
+            {
+              src: "/icons/icon-192.png",
+              sizes: "192x192",
+              type: "image/png",
+            },
+          ],
         },
         icons: [
           {
@@ -53,6 +60,12 @@ export default defineConfig(({ mode }) => ({
             sizes: "512x512",
             type: "image/png",
             purpose: "any",
+          },
+          {
+            src: "/icons/icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
           },
         ],
       },

@@ -47,6 +47,16 @@ export function SaveFromAppsSheet({ className }: SaveFromAppsSheetProps) {
               <li>{t("shareFromApps.androidStep2")}</li>
               <li>{t("shareFromApps.androidStep3")}</li>
             </ol>
+            <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/80 p-3">
+              <h4 className="text-sm font-semibold text-indigo-900">{t("shareFromApps.androidPinTitle")}</h4>
+              <p className="mt-1 text-xs text-indigo-800/90">{t("shareFromApps.androidPinIntro")}</p>
+              <ol className="mt-2 list-decimal space-y-1 ps-4 text-xs text-indigo-900/90">
+                <li>{t("shareFromApps.androidPinStep1")}</li>
+                <li>{t("shareFromApps.androidPinStep2")}</li>
+                <li>{t("shareFromApps.androidPinStep3")}</li>
+              </ol>
+              <p className="mt-2 text-xs text-indigo-800/80">{t("shareFromApps.androidPinNote")}</p>
+            </div>
           </section>
 
           <section className="space-y-2">
