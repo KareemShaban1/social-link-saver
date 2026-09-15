@@ -6,6 +6,18 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+interface LaunchParams {
+  targetURL?: string;
+}
+
+interface LaunchQueue {
+  setConsumer(callback: (launchParams: LaunchParams) => void): void;
+}
+
+interface Window {
+  launchQueue?: LaunchQueue;
+}
+
 interface WindowEventMap {
   beforeinstallprompt: BeforeInstallPromptEvent;
 }

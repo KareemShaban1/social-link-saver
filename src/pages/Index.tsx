@@ -36,8 +36,8 @@ import {
   PaginationItem,
   PaginationLink,
 } from "@/components/ui/pagination";
-import { detectPlatformFromUrl, extractUrlMetadata } from "@/lib/urlMetadata";
-import { consumePendingShare } from "@/lib/pendingShare";
+import { detectPlatformFromUrl } from "@/lib/urlMetadata";
+import { consumePendingShare, PENDING_SHARE_READY_EVENT } from "@/lib/pendingShare";
 import { cn } from "@/lib/utils";
 import { SaveFromAppsSheet } from "@/components/SaveFromAppsSheet";
 
@@ -207,55 +207,33 @@ const Index = () => {
     }
   }, [statsModalOpen, user, fetchData]);
 
-  // Bookmarklet / Android share target / iOS Shortcut:
-  // pending share is captured into sessionStorage before login redirects can drop query params.
-  useEffect(() => {
+  const applyPendingShare = useCallback(() => {
     if (!user) return;
 
     const pending = consumePendingShare();
     if (!pending?.url) return;
 
     const urlParam = pending.url;
-    const manualTitle = pending.title;
-    const manualDescription = pending.description;
-    const content = pending.content;
-    const platform = pending.platform || detectPlatformFromUrl(urlParam);
-    const categoryId = pending.categoryId;
-    const categoryName = pending.categoryName;
-
-    (async () => {
-      let finalTitle = manualTitle;
-      let finalDescription = manualDescription;
-
-      const looksGenericTitle =
-        !finalTitle ||
-        ["linkedin", "facebook", "twitter", "x", "instagram", "tiktok", "youtube"]
-          .some((word) => finalTitle!.toLowerCase().includes(word) && finalTitle!.split(" ").length <= 3);
-
-      if (looksGenericTitle || !finalDescription || content) {
-        try {
-          const metadata = await extractUrlMetadata(urlParam, content);
-          if (metadata.title && (!finalTitle || looksGenericTitle)) {
-            finalTitle = metadata.title;
-          }
-          if (!finalDescription && metadata.description) {
-            finalDescription = metadata.description;
-          }
-        } catch (error) {
-          console.error("Failed to auto-extract metadata for shared URL:", error);
-        }
-      }
-
-      setCreatePrefill({
-        url: urlParam,
-        title: finalTitle,
-        description: finalDescription,
-        platform,
-        categoryId,
-        categoryName,
-      });
-    })();
+    setCreatePrefill({
+      url: urlParam,
+      title: pending.title,
+      description: pending.description,
+      platform: pending.platform || detectPlatformFromUrl(urlParam),
+      categoryId: pending.categoryId,
+      categoryName: pending.categoryName,
+    });
   }, [user]);
+
+  // Bookmarklet / Android share target / iOS Shortcut (sessionStorage + launchQueue).
+  useEffect(() => {
+    applyPendingShare();
+  }, [applyPendingShare]);
+
+  useEffect(() => {
+    const onShareReady = () => applyPendingShare();
+    window.addEventListener(PENDING_SHARE_READY_EVENT, onShareReady);
+    return () => window.removeEventListener(PENDING_SHARE_READY_EVENT, onShareReady);
+  }, [applyPendingShare]);
 
   // Get unique platforms from links
   const availablePlatforms = Array.from(new Set(links.map(link => link.platform)));

@@ -1,5 +1,15 @@
 export const PENDING_SHARE_STORAGE_KEY = "socialsaver.pendingShare";
 
+/** Fired after a share payload is stored (cold URL or launchQueue). */
+export const PENDING_SHARE_READY_EVENT = "socialsaver-pending-share-ready";
+
+function normalizePathname(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    return pathname.slice(0, -1);
+  }
+  return pathname || "/";
+}
+
 export interface PendingShare {
   url: string;
   title?: string;
@@ -73,15 +83,26 @@ export function captureShareFromSearchParams(
   params: URLSearchParams,
   pathname: string,
 ): PendingShare | null {
-  const isShareTarget = pathname === "/share-target";
+  const normalizedPath = normalizePathname(pathname);
+  const isShareTarget = normalizedPath === "/share-target";
   const isAddFlow = params.get("add") === "1";
   if (!isShareTarget && !isAddFlow) return null;
 
-  const url = extractUrlFromSharePayload({
+  let url = extractUrlFromSharePayload({
     url: params.get("url"),
     text: params.get("text"),
     title: params.get("title"),
   });
+
+  // Some Android builds only pass a single combined field or odd param names.
+  if (!url && isShareTarget) {
+    const combined = [...params.entries()]
+      .map(([, value]) => value)
+      .filter(Boolean)
+      .join("\n");
+    url = extractUrlFromSharePayload({ text: combined, title: combined });
+  }
+
   if (!url) return null;
 
   const title = usefulShareTitle(params.get("title") || undefined, url);
@@ -107,9 +128,41 @@ export function captureShareFromSearchParams(
 export function savePendingShare(share: PendingShare): void {
   try {
     sessionStorage.setItem(PENDING_SHARE_STORAGE_KEY, JSON.stringify(share));
+    window.dispatchEvent(new Event(PENDING_SHARE_READY_EVENT));
   } catch {
     /* private mode / quota */
   }
+}
+
+/** Parse a full share-target or deep-link URL (used by launchQueue.targetURL). */
+export function captureShareFromAbsoluteUrl(rawUrl: string): PendingShare | null {
+  try {
+    const parsed = new URL(rawUrl, window.location.origin);
+    return captureShareFromSearchParams(parsed.searchParams, normalizePathname(parsed.pathname));
+  } catch {
+    return null;
+  }
+}
+
+export function ingestShareFromAbsoluteUrl(rawUrl: string): boolean {
+  const share = captureShareFromAbsoluteUrl(rawUrl);
+  if (!share) return false;
+  savePendingShare(share);
+  return true;
+}
+
+/** Android reuses an open PWA window and delivers the share via launchQueue, not location.search. */
+export function registerShareLaunchQueue(onCaptured?: () => void): void {
+  if (!window.launchQueue?.setConsumer) return;
+  const { launchQueue } = window;
+
+  launchQueue.setConsumer((launchParams) => {
+    const targetURL = launchParams.targetURL;
+    if (!targetURL) return;
+    if (ingestShareFromAbsoluteUrl(targetURL)) {
+      onCaptured?.();
+    }
+  });
 }
 
 export function peekPendingShare(): PendingShare | null {
@@ -135,8 +188,9 @@ export function consumePendingShare(): PendingShare | null {
 }
 
 function shouldRedirectToApp(pathname: string, params: URLSearchParams, share: PendingShare | null): boolean {
-  if (pathname === "/share-target") return true;
-  if (pathname === "/" && (share || params.get("add") === "1")) return true;
+  const normalizedPath = normalizePathname(pathname);
+  if (normalizedPath === "/share-target") return true;
+  if (normalizedPath === "/" && (share || params.get("add") === "1")) return true;
   return false;
 }
 
@@ -145,23 +199,40 @@ export function bootstrapPendingShareFromWindow(): void {
   if (typeof window === "undefined") return;
 
   const { pathname, search } = window.location;
+  const normalizedPath = normalizePathname(pathname);
   const params = new URLSearchParams(search);
-  const share = captureShareFromSearchParams(params, pathname);
+  const share = captureShareFromSearchParams(params, normalizedPath);
   if (share) savePendingShare(share);
 
-  if (shouldRedirectToApp(pathname, params, share)) {
+  if (shouldRedirectToApp(normalizedPath, params, share)) {
     window.history.replaceState({}, "", "/app");
+    window.dispatchEvent(new PopStateEvent("popstate"));
     return;
   }
 
   if (share && search) {
-    window.history.replaceState({}, "", pathname);
+    window.history.replaceState({}, "", normalizedPath);
+    window.dispatchEvent(new PopStateEvent("popstate"));
   }
 }
 
+export function registerShareLaunchQueueNavigation(): void {
+  registerShareLaunchQueue(() => {
+    if (normalizePathname(window.location.pathname) !== "/app") {
+      window.history.replaceState({}, "", "/app");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
+  });
+}
+
 export function capturePendingShareFromLocation(pathname: string, search: string): boolean {
+  const normalizedPath = normalizePathname(pathname);
   const params = new URLSearchParams(search);
-  const share = captureShareFromSearchParams(params, pathname);
+  const share = captureShareFromSearchParams(params, normalizedPath);
   if (share) savePendingShare(share);
-  return Boolean(share) || pathname === "/share-target" || (pathname === "/" && params.get("add") === "1");
+  return (
+    Boolean(share) ||
+    normalizedPath === "/share-target" ||
+    (normalizedPath === "/" && params.get("add") === "1")
+  );
 }

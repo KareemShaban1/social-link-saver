@@ -11,7 +11,8 @@ export function ShareInboundCapture() {
     const shouldRedirect = capturePendingShareFromLocation(location.pathname, location.search);
     if (!shouldRedirect && !location.search) return;
 
-    if (location.pathname === "/share-target" || (location.pathname === "/" && shouldRedirect)) {
+    const path = location.pathname.replace(/\/$/, "") || "/";
+    if (path === "/share-target" || (path === "/" && shouldRedirect)) {
       navigate("/app", { replace: true });
       return;
     }

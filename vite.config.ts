@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => ({
       ],
       manifest: {
         // Bump id when forcing clients off a stuck old cache after theme/UI deploys.
-        id: "/socialsaver-pwa-v8",
+        id: "/socialsaver-pwa-v9",
         name: "SocialSaver",
         short_name: "SocialSaver",
         description: "Save, organize, and access your social media links.",
