@@ -69,5 +69,59 @@ export function persistSpeechLocale(locale: Locale): void {
 }
 
 export function joinSpeechParts(prefix: string, finalText: string, interimText: string): string {
-  return [prefix.trimEnd(), finalText.trim(), interimText.trim()].filter(Boolean).join(" ");
+  return appendUniqueTranscript(appendUniqueTranscript(prefix, finalText), interimText);
 }
+
+function normalizeSpeech(text: string): string {
+  return text
+    .replace(/[.,!?;:"'()[\]{}]/g, "")
+    .replace(/[،؛؟«»]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function collapseRepeatedPhrase(text: string): string {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 4) return text.trim();
+  const half = Math.floor(words.length / 2);
+  if (words.length === half * 2) {
+    const first = normalizeSpeech(words.slice(0, half).join(" "));
+    const second = normalizeSpeech(words.slice(half).join(" "));
+    if (first && first === second) return words.slice(0, half).join(" ");
+  }
+  return text.trim();
+}
+
+/** Append newly recognized speech without duplicating words Chrome already committed. */
+export function appendUniqueTranscript(existing: string, incoming: string): string {
+  const left = existing.trimEnd();
+  const right = collapseRepeatedPhrase(incoming.trim());
+  if (!right) return left;
+  if (!left) return right;
+
+  const leftNorm = normalizeSpeech(left);
+  const rightNorm = normalizeSpeech(right);
+  if (!rightNorm || leftNorm.endsWith(rightNorm)) return left;
+
+  // Incoming is a longer version of the same utterance ("hello" → "hello world").
+  if (rightNorm.startsWith(leftNorm)) {
+    const restNorm = rightNorm.slice(leftNorm.length).trim();
+    if (!restNorm || !restNorm.startsWith(leftNorm)) return right;
+  }
+
+  const leftWords = left.split(/\s+/).filter(Boolean);
+  const rightWords = right.split(/\s+/).filter(Boolean);
+  const maxOverlap = Math.min(leftWords.length, rightWords.length);
+
+  for (let n = maxOverlap; n > 0; n--) {
+    const suffix = normalizeSpeech(leftWords.slice(-n).join(" "));
+    const prefix = normalizeSpeech(rightWords.slice(0, n).join(" "));
+    if (suffix && suffix === prefix) {
+      return [...leftWords, ...rightWords.slice(n)].join(" ");
+    }
+  }
+
+  return `${left} ${right}`;
+}
+

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Locale } from "@/i18n";
 import {
+  appendUniqueTranscript,
   getSpeechRecognitionConstructor,
   isInsecureContext,
   isSpeechRecognitionSupported,
-  joinSpeechParts,
   speechLocaleToBcp47,
   type AppSpeechRecognition,
 } from "@/lib/speechRecognition";
@@ -53,9 +53,11 @@ export function useSpeechToText({
   const enabledRef = useRef(enabled);
   const onErrorRef = useRef(onError);
   const wantListenRef = useRef(false);
-  const prefixRef = useRef("");
+  const committedRef = useRef("");
+  const sessionPrefixRef = useRef("");
   const recognitionRef = useRef<AppSpeechRecognition | null>(null);
   const restartTimerRef = useRef<number | null>(null);
+  const engineGenerationRef = useRef(0);
 
   valueRef.current = value;
   onChangeRef.current = onChange;
@@ -69,6 +71,14 @@ export function useSpeechToText({
     }
   }, []);
 
+  const detachRecognition = useCallback((recognition: AppSpeechRecognition | null) => {
+    if (!recognition) return;
+    recognition.onstart = null;
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null;
+  }, []);
+
   const haltRef = useRef<() => void>(() => undefined);
   const stableHalt = useCallback(() => {
     haltRef.current();
@@ -77,14 +87,12 @@ export function useSpeechToText({
   const halt = useCallback(() => {
     clearRestartTimer();
     wantListenRef.current = false;
+    engineGenerationRef.current += 1;
     activeStops.delete(stableHalt);
     const recognition = recognitionRef.current;
     recognitionRef.current = null;
+    detachRecognition(recognition);
     if (recognition) {
-      recognition.onstart = null;
-      recognition.onresult = null;
-      recognition.onerror = null;
-      recognition.onend = null;
       try {
         recognition.abort();
       } catch {
@@ -96,24 +104,20 @@ export function useSpeechToText({
       }
     }
     setListening(false);
-  }, [clearRestartTimer, stableHalt]);
+  }, [clearRestartTimer, detachRecognition, stableHalt]);
 
   haltRef.current = halt;
 
-  const begin = useCallback((): SpeechToTextError | null => {
-    if (!enabledRef.current) return "generic";
-    if (isInsecureContext()) return "insecure";
+  const startEngine = useCallback(() => {
     const Ctor = getSpeechRecognitionConstructor();
-    if (!Ctor) return "unsupported";
+    if (!Ctor || !wantListenRef.current || !enabledRef.current) return;
 
-    for (const other of [...activeStops]) {
-      if (other !== stableHalt) other();
-    }
-    activeStops.add(stableHalt);
-    clearRestartTimer();
+    const generation = ++engineGenerationRef.current;
+    const previous = recognitionRef.current;
+    recognitionRef.current = null;
+    detachRecognition(previous);
 
-    wantListenRef.current = true;
-    prefixRef.current = valueRef.current.trimEnd();
+    sessionPrefixRef.current = committedRef.current;
 
     const recognition = new Ctor();
     recognition.continuous = true;
@@ -123,22 +127,31 @@ export function useSpeechToText({
     recognitionRef.current = recognition;
 
     recognition.onstart = () => {
+      if (generation !== engineGenerationRef.current) return;
       setListening(true);
     };
 
     recognition.onresult = (event) => {
+      if (generation !== engineGenerationRef.current) return;
+
       let finals = "";
       let interim = "";
       for (let i = 0; i < event.results.length; i++) {
-        const result = event.results[i];
-        const transcript = result[0]?.transcript ?? "";
-        if (result.isFinal) finals += transcript;
+        const transcript = event.results[i][0]?.transcript ?? "";
+        if (event.results[i].isFinal) finals += transcript;
         else interim += transcript;
       }
-      onChangeRef.current(joinSpeechParts(prefixRef.current, finals, interim));
+
+      committedRef.current = appendUniqueTranscript(sessionPrefixRef.current, finals);
+      onChangeRef.current(
+        interim
+          ? appendUniqueTranscript(committedRef.current, interim)
+          : committedRef.current,
+      );
     };
 
     recognition.onerror = (event) => {
+      if (generation !== engineGenerationRef.current) return;
       const mapped = mapRecognitionError(event.error);
       if (!mapped) return;
       wantListenRef.current = false;
@@ -146,39 +159,61 @@ export function useSpeechToText({
     };
 
     recognition.onend = () => {
-      if (!wantListenRef.current || !enabledRef.current) {
+      if (generation !== engineGenerationRef.current) return;
+      if (recognitionRef.current === recognition) {
         recognitionRef.current = null;
+      }
+      detachRecognition(recognition);
+
+      if (!wantListenRef.current || !enabledRef.current) {
         activeStops.delete(stableHalt);
         setListening(false);
         return;
       }
 
-      prefixRef.current = valueRef.current.trimEnd();
-      recognition.lang = speechLocaleToBcp47(localeRef.current);
+      // Keep only finalized text so a new session cannot prepend the same interim words.
+      if (valueRef.current.trim() !== committedRef.current.trim()) {
+        onChangeRef.current(committedRef.current);
+      }
+
       restartTimerRef.current = window.setTimeout(() => {
         if (!wantListenRef.current || !enabledRef.current) return;
-        try {
-          recognition.start();
-        } catch {
-          wantListenRef.current = false;
-          recognitionRef.current = null;
-          activeStops.delete(stableHalt);
-          setListening(false);
-        }
-      }, 160);
+        if (generation !== engineGenerationRef.current) return;
+        startEngine();
+      }, 280);
     };
 
     try {
       recognition.start();
     } catch {
-      wantListenRef.current = false;
       recognitionRef.current = null;
-      activeStops.delete(stableHalt);
-      return "generic";
+      detachRecognition(recognition);
+      if (generation === engineGenerationRef.current) {
+        wantListenRef.current = false;
+        activeStops.delete(stableHalt);
+        setListening(false);
+      }
     }
+  }, [detachRecognition, stableHalt]);
 
+  const begin = useCallback((): SpeechToTextError | null => {
+    if (!enabledRef.current) return "generic";
+    if (isInsecureContext()) return "insecure";
+    if (!getSpeechRecognitionConstructor()) return "unsupported";
+
+    for (const other of [...activeStops]) {
+      if (other !== stableHalt) other();
+    }
+    activeStops.add(stableHalt);
+    clearRestartTimer();
+
+    wantListenRef.current = true;
+    committedRef.current = valueRef.current.trimEnd();
+    sessionPrefixRef.current = committedRef.current;
+    startEngine();
+    if (!wantListenRef.current) return "generic";
     return null;
-  }, [clearRestartTimer, stableHalt]);
+  }, [clearRestartTimer, stableHalt, startEngine]);
 
   const toggle = useCallback((): SpeechToTextError | null => {
     if (wantListenRef.current) {
@@ -200,11 +235,10 @@ export function useSpeechToText({
     if (previous === locale) return;
     const recognition = recognitionRef.current;
     if (!recognition || !wantListenRef.current) return;
-    recognition.lang = speechLocaleToBcp47(locale);
     try {
       recognition.stop();
     } catch {
-      /* onend restarts with the new language */
+      /* onend starts a fresh engine with the new language */
     }
   }, [locale]);
 
