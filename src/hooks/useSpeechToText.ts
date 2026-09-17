@@ -5,6 +5,7 @@ import {
   getSpeechRecognitionConstructor,
   isInsecureContext,
   isSpeechRecognitionSupported,
+  pickBestTranscript,
   speechLocaleToBcp47,
   type AppSpeechRecognition,
 } from "@/lib/speechRecognition";
@@ -87,23 +88,27 @@ export function useSpeechToText({
   const halt = useCallback(() => {
     clearRestartTimer();
     wantListenRef.current = false;
-    engineGenerationRef.current += 1;
     activeStops.delete(stableHalt);
+    setListening(false);
+    committedRef.current = valueRef.current.trimEnd();
     const recognition = recognitionRef.current;
-    recognitionRef.current = null;
-    detachRecognition(recognition);
     if (recognition) {
       try {
-        recognition.abort();
+        recognition.stop();
+        return;
       } catch {
+        engineGenerationRef.current += 1;
+        recognitionRef.current = null;
+        detachRecognition(recognition);
         try {
-          recognition.stop();
+          recognition.abort();
         } catch {
           /* already stopped */
         }
       }
+    } else {
+      engineGenerationRef.current += 1;
     }
-    setListening(false);
   }, [clearRestartTimer, detachRecognition, stableHalt]);
 
   haltRef.current = halt;
@@ -120,9 +125,9 @@ export function useSpeechToText({
     sessionPrefixRef.current = committedRef.current;
 
     const recognition = new Ctor();
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
+    recognition.maxAlternatives = 3;
     recognition.lang = speechLocaleToBcp47(localeRef.current);
     recognitionRef.current = recognition;
 
@@ -137,9 +142,10 @@ export function useSpeechToText({
       let finals = "";
       let interim = "";
       for (let i = 0; i < event.results.length; i++) {
-        const transcript = event.results[i][0]?.transcript ?? "";
-        if (event.results[i].isFinal) finals += transcript;
-        else interim += transcript;
+        const transcript = pickBestTranscript(event.results[i]);
+        if (!transcript) continue;
+        if (event.results[i].isFinal) finals += `${finals ? " " : ""}${transcript}`;
+        else interim += `${interim ? " " : ""}${transcript}`;
       }
 
       committedRef.current = appendUniqueTranscript(sessionPrefixRef.current, finals);
@@ -166,21 +172,22 @@ export function useSpeechToText({
       detachRecognition(recognition);
 
       if (!wantListenRef.current || !enabledRef.current) {
+        committedRef.current = valueRef.current.trimEnd();
+        onChangeRef.current(committedRef.current);
         activeStops.delete(stableHalt);
         setListening(false);
         return;
       }
 
-      // Keep only finalized text so a new session cannot prepend the same interim words.
-      if (valueRef.current.trim() !== committedRef.current.trim()) {
-        onChangeRef.current(committedRef.current);
-      }
+      // Keep the last heard words, including not-yet-final speech, then start a new phrase.
+      committedRef.current = valueRef.current.trimEnd();
+      onChangeRef.current(committedRef.current);
 
       restartTimerRef.current = window.setTimeout(() => {
         if (!wantListenRef.current || !enabledRef.current) return;
         if (generation !== engineGenerationRef.current) return;
         startEngine();
-      }, 280);
+      }, 180);
     };
 
     try {

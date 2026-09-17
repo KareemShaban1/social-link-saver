@@ -8,6 +8,7 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
+    color-scheme: light only;
     --background: 210 20% 98%;
     --foreground: 222 47% 11%;
 
@@ -85,67 +86,15 @@ All colors MUST be HSL.
     --sidebar-ring: 243 75% 59%;
   }
 
+  html {
+    color-scheme: light only;
+  }
+
   /* Hero section: links/bookmarks themed background (mesh + subtle grid) */
   .hero-links-bg {
     background: var(--gradient-hero-mesh), var(--hero-pattern);
     background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 25px 25px, 25px 25px;
     background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
-  }
-
-  .dark {
-    --background: 220 20% 12%;
-    --foreground: 220 10% 95%;
-
-    --card: 220 18% 16%;
-    --card-foreground: 220 10% 95%;
-
-    --popover: 220 18% 16%;
-    --popover-foreground: 220 10% 95%;
-
-    --primary: 243 75% 65%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 220 15% 22%;
-    --secondary-foreground: 220 10% 95%;
-
-    --muted: 220 15% 22%;
-    --muted-foreground: 220 10% 65%;
-
-    --accent: 243 40% 20%;
-    --accent-foreground: 239 84% 90%;
-
-    --destructive: 0 62.8% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 220 15% 22%;
-    --input: 220 15% 22%;
-    --ring: 243 75% 65%;
-    
-    --gradient-hero: linear-gradient(135deg, hsl(243 75% 55%), hsl(243 75% 65%));
-    --gradient-hero-mesh: 
-      radial-gradient(ellipse 80% 50% at 20% 40%, hsl(243 75% 59% / 0.3), transparent),
-      radial-gradient(ellipse 60% 40% at 80% 60%, hsl(239 84% 67% / 0.2), transparent),
-      linear-gradient(135deg, hsl(243 75% 45%), hsl(243 70% 55%));
-    --hero-pattern: 
-      radial-gradient(circle at center, rgba(255,255,255,0.06) 0%, transparent 50%),
-      repeating-linear-gradient(90deg, transparent, transparent 24px, rgba(255,255,255,0.02) 24px, rgba(255,255,255,0.02) 25px),
-      repeating-linear-gradient(0deg, transparent, transparent 24px, rgba(255,255,255,0.02) 24px, rgba(255,255,255,0.02) 25px);
-    --gradient-card: linear-gradient(to bottom, hsl(220 18% 16%), hsl(220 18% 18%));
-    
-    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.15);
-    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.2);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.25);
-    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.15);
-    
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 243 75% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 243 40% 20%;
-    --sidebar-accent-foreground: 239 84% 90%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 243 75% 65%;
   }
 }
 
@@ -157,6 +106,16 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    color-scheme: light only;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    color-scheme: light;
   }
 }
 

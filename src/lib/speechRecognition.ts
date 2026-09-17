@@ -20,10 +20,18 @@ export interface AppSpeechRecognition {
 
 export interface AppSpeechRecognitionEvent {
   resultIndex: number;
-  results: ArrayLike<{
-    isFinal: boolean;
-    0: { transcript: string };
-  }>;
+  results: ArrayLike<AppSpeechRecognitionResult>;
+}
+
+export interface AppSpeechRecognitionResult {
+  isFinal: boolean;
+  length: number;
+  [index: number]: AppSpeechRecognitionAlternative;
+}
+
+export interface AppSpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
 }
 
 function getWindowWithSpeech(): Window & {
@@ -52,9 +60,23 @@ export function speechLocaleToBcp47(locale: Locale): string {
   const nav = typeof navigator !== "undefined" ? navigator.language : "";
   const navLower = nav.toLowerCase();
   if (locale === "ar") {
-    return navLower.startsWith("ar") ? nav : "ar-SA";
+    // Keep the browser's Arabic dialect when available; otherwise use Egyptian Arabic,
+    // which Chrome's recognizer handles more reliably for mixed/MSA speech than ar-SA.
+    return navLower.startsWith("ar") ? nav : "ar-EG";
   }
   return navLower.startsWith("en") ? nav : "en-US";
+}
+
+export function pickBestTranscript(result: AppSpeechRecognitionResult | undefined): string {
+  if (!result || result.length < 1) return "";
+  let best = result[0];
+  for (let i = 1; i < result.length; i++) {
+    const alternative = result[i];
+    if ((alternative?.confidence ?? 0) > (best?.confidence ?? 0)) {
+      best = alternative;
+    }
+  }
+  return (best?.transcript ?? "").trim();
 }
 
 export function readStoredSpeechLocale(fallback: Locale): Locale {

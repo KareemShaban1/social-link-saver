@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { ThemeProvider } from "@/components/theme-provider";
 import Landing from "./pages/Landing";
 import Contact from "./pages/Contact";
 import Index from "./pages/Index";
@@ -21,12 +20,11 @@ import { ShareInboundCapture, ShareTargetRedirect } from "@/components/ShareInbo
 const queryClient = new QueryClient();
 
 const App = () => (
-  <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-    <QueryClientProvider client={queryClient}>
-      <LanguageProvider>
-        <PwaUpdatePrompt />
-        <PwaInstallPrompt />
-        <AuthProvider>
+  <QueryClientProvider client={queryClient}>
+    <LanguageProvider>
+      <PwaUpdatePrompt />
+      <PwaInstallPrompt />
+      <AuthProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -59,10 +57,9 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
-        </AuthProvider>
-      </LanguageProvider>
-    </QueryClientProvider>
-  </ThemeProvider>
+      </AuthProvider>
+    </LanguageProvider>
+  </QueryClientProvider>
 );
 
 export default App;

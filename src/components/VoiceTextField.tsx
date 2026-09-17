@@ -79,19 +79,19 @@ export const VoiceTextField = ({
   const micLabel = listening ? t("voiceInput.stop") : t("voiceInput.start");
   const localeLabel =
     speechLocale === "ar" ? t("voiceInput.speakArabic") : t("voiceInput.speakEnglish");
+  const fieldLang = speechLocale === "ar" ? "ar" : "en";
 
   const controls = (
-    <div className={cn("flex items-center gap-0.5", multiline ? "absolute end-1.5 bottom-1.5" : "absolute end-1 top-1/2 -translate-y-1/2")}>
+    <div className="flex shrink-0 items-center gap-1">
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
             type="button"
-            variant="ghost"
-            size="sm"
+            variant="outline"
             onClick={handleLocaleToggle}
             className={cn(
-              "h-7 min-w-7 rounded-full px-1.5 text-[11px] font-semibold",
-              listening ? "text-indigo-700" : "text-gray-500 hover:text-indigo-700",
+              "h-10 min-w-10 px-2.5 text-xs font-semibold",
+              listening ? "border-indigo-200 text-indigo-700" : "text-gray-600",
             )}
             aria-label={t("voiceInput.language")}
           >
@@ -104,14 +104,14 @@ export const VoiceTextField = ({
         <TooltipTrigger asChild>
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="icon"
             onClick={handleMicClick}
             className={cn(
-              "h-8 w-8 rounded-full",
+              "h-10 w-10",
               listening
-                ? "bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
-                : "text-gray-500 hover:text-indigo-700",
+                ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+                : "text-gray-600",
             )}
             aria-label={micLabel}
             aria-pressed={listening}
@@ -126,17 +126,18 @@ export const VoiceTextField = ({
 
   return (
     <div className="space-y-1.5">
-      <div className="relative">
+      <div className={cn("flex gap-2", multiline ? "items-start" : "items-center")}>
         {multiline ? (
           <Textarea
             id={id}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={listening ? t("voiceInput.listening") : placeholder}
-            className={cn(className, "pb-10 pe-24", listening && "ring-2 ring-indigo-400")}
+            className={cn(className, "min-h-[80px] flex-1", listening && "ring-2 ring-indigo-400")}
             rows={rows}
             readOnly={listening}
             dir="auto"
+            lang={fieldLang}
           />
         ) : (
           <Input
@@ -144,22 +145,27 @@ export const VoiceTextField = ({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={listening ? t("voiceInput.listening") : placeholder}
-            className={cn(className, "pe-24", listening && "ring-2 ring-indigo-400")}
+            className={cn(className, "flex-1", listening && "ring-2 ring-indigo-400")}
             required={required}
             readOnly={listening}
             dir="auto"
+            lang={fieldLang}
           />
         )}
         {controls}
       </div>
-      {listening && (
-        <p className="flex items-center gap-1.5 text-xs text-indigo-600">
-          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-          {t("voiceInput.listeningHint", {
-            language: speechLocale === "ar" ? t("common.arabic") : t("common.english"),
-          })}
-        </p>
-      )}
+      <p className={cn("text-xs", listening ? "flex items-center gap-1.5 text-indigo-600" : "text-gray-400")}>
+        {listening ? (
+          <>
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
+            {t("voiceInput.listeningHint", {
+              language: speechLocale === "ar" ? t("common.arabic") : t("common.english"),
+            })}
+          </>
+        ) : (
+          t("voiceInput.voiceHint")
+        )}
+      </p>
     </div>
   );
 };
