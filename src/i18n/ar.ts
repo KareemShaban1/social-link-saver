@@ -48,6 +48,9 @@ export const ar: TranslationSchema = {
     openDashboard: "فتح لوحة التحكم",
     dashboard: "لوحة التحكم",
     account: "الحساب",
+    profile: "الملف الشخصي",
+    categories: "الفئات",
+    bottomNav: "قائمة التطبيق",
     goToDashboard: "الذهاب للوحة التحكم",
   },
   landing: {
@@ -341,6 +344,8 @@ export const ar: TranslationSchema = {
     list: "القائمة",
     noCategories: "لا توجد فئات بعد",
     createFirst: "أنشئ فئتك الأولى لتنظيم الروابط",
+    pageSubtitle: "أنشئ وعدّل ونظّم فئات روابطك",
+    loadFailed: "فشل تحميل الفئات",
     deleteConfirm: "هل أنت متأكد من حذف",
     deleteWarning: "ستصبح الروابط في هذه الفئة بدون فئة.",
     deleted: "تم حذف الفئة",

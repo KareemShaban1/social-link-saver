@@ -46,6 +46,9 @@ export const en = {
     openDashboard: "Open Dashboard",
     dashboard: "Dashboard",
     account: "Account",
+    profile: "Profile",
+    categories: "Categories",
+    bottomNav: "App menu",
     goToDashboard: "Go to Dashboard",
   },
   landing: {
@@ -344,6 +347,8 @@ export const en = {
     list: "List",
     noCategories: "No categories yet",
     createFirst: "Create your first category to organize links",
+    pageSubtitle: "Create, edit, and organize categories for your links",
+    loadFailed: "Failed to load categories",
     deleteConfirm: "Are you sure you want to delete",
     deleteWarning: "Links in this category will become uncategorized.",
     deleted: "Category deleted",

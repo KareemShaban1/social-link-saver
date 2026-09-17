@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Contact from "./pages/Contact";
 import Index from "./pages/Index";
+import Categories from "./pages/Categories";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Account from "./pages/Account";
@@ -41,6 +42,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Index />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/categories"
+                element={
+                  <ProtectedRoute>
+                    <Categories />
                   </ProtectedRoute>
                 }
               />

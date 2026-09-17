@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Settings, Plus, Pencil, Trash2, Palette } from "lucide-react";
+import { Settings, Plus, Pencil, Trash2, Palette, FolderTree } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,8 @@ interface Category {
 interface CategoryManagerProps {
 	categories: Category[];
 	onCategoriesChange: () => void;
+	/** Render the manager inline on a page instead of inside a dialog. */
+	embedded?: boolean;
 }
 
 const PRESET_COLORS = [
@@ -39,7 +41,11 @@ const PRESET_COLORS = [
 	"#a855f7", // Violet
 ];
 
-export const CategoryManager = ({ categories, onCategoriesChange }: CategoryManagerProps) => {
+export const CategoryManager = ({
+	categories,
+	onCategoriesChange,
+	embedded = false,
+}: CategoryManagerProps) => {
 	const { user } = useAuth();
 	const [open, setOpen] = useState(false);
 	const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -48,6 +54,7 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 	const [newColor, setNewColor] = useState(PRESET_COLORS[0]);
 	const [parentId, setParentId] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [activeTab, setActiveTab] = useState("form");
 	const { toast } = useToast();
 	const { t } = useTranslation();
 
@@ -79,6 +86,11 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 		setNewColor(PRESET_COLORS[0]);
 		setParentId(null);
 		setEditingCategory(null);
+	};
+
+	const handleDialogOpenChange = (isOpen: boolean) => {
+		setOpen(isOpen);
+		if (!isOpen) resetForm();
 	};
 
 	const handleAdd = async () => {
@@ -198,35 +210,21 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 		setNewName(category.name);
 		setNewColor(category.color);
 		setParentId(category.parent_id);
+		setActiveTab("form");
 	};
 
-	return (
-		<>
-			<Dialog open={open} onOpenChange={(isOpen) => {
-				setOpen(isOpen);
-				if (!isOpen) resetForm();
-			}}>
-				<DialogTrigger asChild>
-					<Button variant="outline" className="rounded-full border-gray-200 hover:border-indigo-200 hover:bg-indigo-50">
-						<Settings className="me-2 h-4 w-4" />
-						{t("categoryManager.title")}
-					</Button>
-				</DialogTrigger>
-				<DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[700px]">
-					<DialogHeader>
-						<DialogTitle className="flex items-center gap-2 text-gray-900">
-							<Palette className="h-5 w-5 text-primary" />
-							{t("categoryManager.title")}
-						</DialogTitle>
-					</DialogHeader>
-
-					<Tabs defaultValue="form" className="w-full">
-						<TabsList className="grid w-full grid-cols-2 rounded-xl bg-gray-100 p-1">
-							<TabsTrigger value="form" className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-								<Plus className="h-4 w-4" />
-								{t("categoryManager.addEditTab")}
-							</TabsTrigger>
-						</TabsList>
+	const managerContent = (
+		<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+			<TabsList className="grid w-full grid-cols-2 rounded-xl bg-gray-100 p-1">
+				<TabsTrigger value="form" className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+					<Plus className="h-4 w-4" />
+					{t("categoryManager.addEditTab")}
+				</TabsTrigger>
+				<TabsTrigger value="hierarchy" className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+					<FolderTree className="h-4 w-4" />
+					{t("categoryManager.hierarchy")}
+				</TabsTrigger>
+			</TabsList>
 
 						<TabsContent value="form" className="mt-4 space-y-4">
 							<div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
@@ -372,41 +370,71 @@ export const CategoryManager = ({ categories, onCategoriesChange }: CategoryMana
 							</div>
 						</TabsContent>
 
-						<TabsContent value="hierarchy" className="mt-4">
-							<CategoryHierarchyEditor
-								categories={categories}
-								onEdit={startEdit}
-								onDelete={setDeleteCategory}
-								onUpdate={onCategoriesChange}
-							/>
-						</TabsContent>
-					</Tabs>
+			<TabsContent value="hierarchy" className="mt-4">
+				<CategoryHierarchyEditor
+					categories={categories}
+					onEdit={startEdit}
+					onDelete={setDeleteCategory}
+					onUpdate={onCategoriesChange}
+				/>
+			</TabsContent>
+		</Tabs>
+	);
+
+	const deleteDialog = (
+		<AlertDialog open={!!deleteCategory} onOpenChange={(isOpen) => !isOpen && setDeleteCategory(null)}>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>{t("categoryManager.deleteCategory")}</AlertDialogTitle>
+					<AlertDialogDescription>
+						{t("categoryManager.deleteConfirmDesc", { name: deleteCategory?.name ?? "" })}
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel disabled={loading} className="rounded-full">
+						{t("common.cancel")}
+					</AlertDialogCancel>
+					<AlertDialogAction
+						onClick={handleDelete}
+						disabled={loading}
+						className="rounded-full bg-destructive hover:bg-destructive/90"
+					>
+						{loading ? t("categoryManager.deleting") : t("common.delete")}
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
+	);
+
+	if (embedded) {
+		return (
+			<>
+				{managerContent}
+				{deleteDialog}
+			</>
+		);
+	}
+
+	return (
+		<>
+			<Dialog open={open} onOpenChange={handleDialogOpenChange}>
+				<DialogTrigger asChild>
+					<Button variant="outline" className="rounded-full border-gray-200 hover:border-indigo-200 hover:bg-indigo-50">
+						<Settings className="me-2 h-4 w-4" />
+						{t("categoryManager.title")}
+					</Button>
+				</DialogTrigger>
+				<DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[700px]">
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2 text-gray-900">
+							<Palette className="h-5 w-5 text-primary" />
+							{t("categoryManager.title")}
+						</DialogTitle>
+					</DialogHeader>
+					{managerContent}
 				</DialogContent>
 			</Dialog>
-
-			{/* Delete Confirmation Dialog */}
-			<AlertDialog open={!!deleteCategory} onOpenChange={(isOpen) => !isOpen && setDeleteCategory(null)}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>{t("categoryManager.deleteCategory")}</AlertDialogTitle>
-						<AlertDialogDescription>
-							{t("categoryManager.deleteConfirmDesc", { name: deleteCategory?.name ?? "" })}
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel disabled={loading} className="rounded-full">
-							{t("common.cancel")}
-						</AlertDialogCancel>
-						<AlertDialogAction
-							onClick={handleDelete}
-							disabled={loading}
-							className="rounded-full bg-destructive hover:bg-destructive/90"
-						>
-							{loading ? t("categoryManager.deleting") : t("common.delete")}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			{deleteDialog}
 		</>
 	);
 };

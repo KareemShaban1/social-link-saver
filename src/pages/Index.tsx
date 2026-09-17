@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { AddLinkDialog } from "@/components/AddLinkDialog";
 import { LinkCard } from "@/components/LinkCard";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { PlatformFilter } from "@/components/PlatformFilter";
-import { CategoryManager } from "@/components/CategoryManager";
 import { AppNavbar } from "@/components/app/AppNavbar";
+import { AppBottomNav } from "@/components/app/AppBottomNav";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Bookmark, Filter, BarChart3, FolderTree, Tags, Star, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { Search, Bookmark, Filter, BarChart3, FolderTree, Tags, Star, ChevronLeft, ChevronRight, RefreshCw, Settings } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -40,6 +41,7 @@ import { detectPlatformFromUrl } from "@/lib/urlMetadata";
 import { consumePendingShare, PENDING_SHARE_READY_EVENT } from "@/lib/pendingShare";
 import { cn } from "@/lib/utils";
 import { SaveFromAppsSheet } from "@/components/SaveFromAppsSheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Link {
   id: string;
@@ -117,8 +119,14 @@ function categoryTabIsActive(
 
 const LINKS_PER_PAGE = 12;
 
-function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+function getPageNumbers(current: number, total: number, compact = false): (number | "ellipsis")[] {
+  const limit = compact ? 5 : 7;
+  if (total <= limit) return Array.from({ length: total }, (_, i) => i + 1);
+  if (compact) {
+    if (current <= 2) return [1, 2, 3, "ellipsis", total];
+    if (current >= total - 1) return [1, "ellipsis", total - 2, total - 1, total];
+    return [1, "ellipsis", current, "ellipsis", total];
+  }
   const pages: (number | "ellipsis")[] = [1];
   if (current > 3) pages.push("ellipsis");
   for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) {
@@ -129,9 +137,84 @@ function getPageNumbers(current: number, total: number): (number | "ellipsis")[]
   return pages;
 }
 
+function LinksPagination({
+  safePage,
+  totalPages,
+  pageNumbers,
+  onPageChange,
+  previousLabel,
+  nextLabel,
+  alignEnd = false,
+}: {
+  safePage: number;
+  totalPages: number;
+  pageNumbers: (number | "ellipsis")[];
+  onPageChange: (page: number) => void;
+  previousLabel: string;
+  nextLabel: string;
+  alignEnd?: boolean;
+}) {
+  return (
+    <Pagination
+      className={cn(
+        "mx-0 w-full min-w-0 max-w-full justify-center overflow-x-auto",
+        alignEnd && "sm:w-auto sm:justify-end",
+      )}
+    >
+      <PaginationContent className="w-max max-w-full gap-0.5 sm:gap-1">
+        <PaginationItem>
+          <PaginationLink
+            size="icon"
+            className="h-8 w-8 rounded-full sm:h-9 sm:w-auto sm:min-w-9 sm:px-3"
+            disabled={safePage === 1}
+            aria-label={previousLabel}
+            onClick={() => onPageChange(Math.max(1, safePage - 1))}
+          >
+            <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
+            <span className="hidden sm:inline">{previousLabel}</span>
+          </PaginationLink>
+        </PaginationItem>
+        {pageNumbers.map((page, idx) =>
+          page === "ellipsis" ? (
+            <PaginationItem key={`ellipsis-${idx}`}>
+              <PaginationEllipsis className="h-8 w-8 sm:h-9 sm:w-9" />
+            </PaginationItem>
+          ) : (
+            <PaginationItem key={page}>
+              <PaginationLink
+                isActive={page === safePage}
+                className="h-8 w-8 min-w-8 rounded-full text-sm sm:h-9 sm:w-9 sm:min-w-9"
+                onClick={() => onPageChange(page)}
+              >
+                {page}
+              </PaginationLink>
+            </PaginationItem>
+          ),
+        )}
+        <PaginationItem>
+          <PaginationLink
+            size="icon"
+            className="h-8 w-8 rounded-full sm:h-9 sm:w-auto sm:min-w-9 sm:px-3"
+            disabled={safePage === totalPages}
+            aria-label={nextLabel}
+            onClick={() => onPageChange(Math.min(totalPages, safePage + 1))}
+          >
+            <span className="hidden sm:inline">{nextLabel}</span>
+            <ChevronRight className="h-4 w-4 rtl:rotate-180" />
+          </PaginationLink>
+        </PaginationItem>
+      </PaginationContent>
+    </Pagination>
+  );
+}
+
 const Index = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const appView = searchParams.get("view");
   const [links, setLinks] = useState<Link[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -284,7 +367,37 @@ const Index = () => {
   }, [filteredLinks, safePage]);
   const rangeFrom = filteredLinks.length === 0 ? 0 : (safePage - 1) * LINKS_PER_PAGE + 1;
   const rangeTo = Math.min(safePage * LINKS_PER_PAGE, filteredLinks.length);
-  const pageNumbers = useMemo(() => getPageNumbers(safePage, totalPages), [safePage, totalPages]);
+  const pageNumbers = useMemo(
+    () => getPageNumbers(safePage, totalPages, isMobile),
+    [safePage, totalPages, isMobile],
+  );
+
+  const setAppView = useCallback(
+    (view: string | null) => {
+      const params = new URLSearchParams(searchParams);
+      if (view) params.set("view", view);
+      else params.delete("view");
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const applyFavoritesOnly = useCallback(
+    (next: boolean) => {
+      setShowFavoritesOnly(next);
+      if (next) setAppView("favorites");
+      else if (appView === "favorites") setAppView(null);
+    },
+    [appView, setAppView],
+  );
+
+  useEffect(() => {
+    if (appView === "categories") {
+      navigate("/app/categories", { replace: true });
+      return;
+    }
+    setShowFavoritesOnly(appView === "favorites");
+  }, [appView, navigate]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -362,10 +475,10 @@ const Index = () => {
   }, [categories, pathFromSelected, rootCategories]);
 
   return (
-    <div className="landing-page min-h-screen bg-gray-50 text-gray-900">
+    <div className="landing-page min-h-screen overflow-x-hidden bg-gray-50 text-gray-900">
       <AppNavbar />
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+      <main className="mx-auto max-w-7xl px-4 py-8 pb-24 sm:px-6 md:pb-10 lg:px-8 lg:py-10">
         {/* Dashboard header */}
         <div className="mb-8 animate-fade-in-up opacity-0" style={{ animationDelay: "100ms", animationFillMode: "forwards" }}>
           <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary">{t("app.dashboard")}</p>
@@ -408,7 +521,16 @@ const Index = () => {
             onCreatePrefillConsumed={() => setCreatePrefill(null)}
           />
           <SaveFromAppsSheet />
-          <CategoryManager categories={categories} onCategoriesChange={fetchData} />
+          <Button
+            asChild
+            variant="outline"
+            className="rounded-full border-gray-200 hover:border-indigo-200 hover:bg-indigo-50"
+          >
+            <Link to="/app/categories">
+              <Settings className="me-2 h-4 w-4" />
+              {t("app.manageCategories")}
+            </Link>
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -532,7 +654,7 @@ const Index = () => {
                         "rounded-full",
                         showFavoritesOnly && "bg-amber-500 hover:bg-amber-600",
                       )}
-                      onClick={() => setShowFavoritesOnly((prev) => !prev)}
+                      onClick={() => applyFavoritesOnly(!showFavoritesOnly)}
                     >
                       <Star className={cn("mr-2 h-4 w-4", showFavoritesOnly && "fill-current")} />
                       {t("app.favoritesOnly")}
@@ -566,7 +688,7 @@ const Index = () => {
                       onClick={() => {
                         setSelectedCategory(null);
                         setSelectedPlatform(null);
-                        setShowFavoritesOnly(false);
+                        applyFavoritesOnly(false);
                         setSearchQuery("");
                         setFiltersOpen(false);
                       }}
@@ -601,7 +723,7 @@ const Index = () => {
                   "rounded-full",
                   showFavoritesOnly && "border-transparent bg-amber-500 hover:bg-amber-600",
                 )}
-                onClick={() => setShowFavoritesOnly((prev) => !prev)}
+                onClick={() => applyFavoritesOnly(!showFavoritesOnly)}
               >
                 <Star className={cn("mr-2 h-4 w-4", showFavoritesOnly && "fill-current")} />
                 {t("app.favoritesOnly")}
@@ -645,7 +767,7 @@ const Index = () => {
                 onClick={() => {
                   setSelectedCategory(null);
                   setSelectedPlatform(null);
-                  setShowFavoritesOnly(false);
+                  applyFavoritesOnly(false);
                   setSearchQuery("");
                 }}
               >
@@ -684,71 +806,19 @@ const Index = () => {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-gray-400 sm:text-sm">
                   {t("app.pageOf", { current: safePage, total: totalPages })}
                 </p>
-                <Pagination className="mx-0 w-full justify-center sm:w-auto sm:justify-end">
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationLink
-                        href="#"
-                        size="default"
-                        className={cn(
-                          "gap-1 rounded-full",
-                          safePage === 1 && "pointer-events-none opacity-50",
-                        )}
-                        aria-disabled={safePage === 1}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setCurrentPage((p) => Math.max(1, p - 1));
-                        }}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        <span>{t("common.previous")}</span>
-                      </PaginationLink>
-                    </PaginationItem>
-                    {pageNumbers.map((page, idx) =>
-                      page === "ellipsis" ? (
-                        <PaginationItem key={`ellipsis-${idx}`}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      ) : (
-                        <PaginationItem key={page}>
-                          <PaginationLink
-                            href="#"
-                            isActive={page === safePage}
-                            className="rounded-full min-w-9"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setCurrentPage(page);
-                            }}
-                          >
-                            {page}
-                          </PaginationLink>
-                        </PaginationItem>
-                      )
-                    )}
-                    <PaginationItem>
-                      <PaginationLink
-                        href="#"
-                        size="default"
-                        className={cn(
-                          "gap-1 rounded-full",
-                          safePage === totalPages && "pointer-events-none opacity-50",
-                        )}
-                        aria-disabled={safePage === totalPages}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setCurrentPage((p) => Math.min(totalPages, p + 1));
-                        }}
-                      >
-                        <span>{t("common.next")}</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </PaginationLink>
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+                <LinksPagination
+                  safePage={safePage}
+                  totalPages={totalPages}
+                  pageNumbers={pageNumbers}
+                  onPageChange={setCurrentPage}
+                  previousLabel={t("common.previous")}
+                  nextLabel={t("common.next")}
+                  alignEnd
+                />
               </div>
             )}
           </div>
@@ -937,7 +1007,7 @@ const Index = () => {
                   onClick={() => {
                     setSelectedCategory(null);
                     setSelectedPlatform(null);
-                    setShowFavoritesOnly(false);
+                    applyFavoritesOnly(false);
                     setSearchQuery("");
                   }}
                 >
@@ -973,71 +1043,19 @@ const Index = () => {
         )}
 
         {!loading && filteredLinks.length > 0 && totalPages > 1 && (
-          <div className="mt-6 flex justify-center">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationLink
-                    href="#"
-                    size="default"
-                    className={cn(
-                      "gap-1 rounded-full",
-                      safePage === 1 && "pointer-events-none opacity-50",
-                    )}
-                    aria-disabled={safePage === 1}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setCurrentPage((p) => Math.max(1, p - 1));
-                    }}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    <span>{t("common.previous")}</span>
-                  </PaginationLink>
-                </PaginationItem>
-                {pageNumbers.map((page, idx) =>
-                  page === "ellipsis" ? (
-                    <PaginationItem key={`bottom-ellipsis-${idx}`}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={`bottom-${page}`}>
-                      <PaginationLink
-                        href="#"
-                        isActive={page === safePage}
-                        className="rounded-full min-w-9"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setCurrentPage(page);
-                        }}
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  )
-                )}
-                <PaginationItem>
-                  <PaginationLink
-                    href="#"
-                    size="default"
-                    className={cn(
-                      "gap-1 rounded-full",
-                      safePage === totalPages && "pointer-events-none opacity-50",
-                    )}
-                    aria-disabled={safePage === totalPages}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setCurrentPage((p) => Math.min(totalPages, p + 1));
-                    }}
-                  >
-                    <span>{t("common.next")}</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </PaginationLink>
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+          <div className="mt-6 flex min-w-0 justify-center">
+            <LinksPagination
+              safePage={safePage}
+              totalPages={totalPages}
+              pageNumbers={pageNumbers}
+              onPageChange={setCurrentPage}
+              previousLabel={t("common.previous")}
+              nextLabel={t("common.next")}
+            />
           </div>
         )}
       </main>
+      <AppBottomNav />
     </div>
   );
 };

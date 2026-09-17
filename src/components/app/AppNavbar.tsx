@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Bookmark, LayoutDashboard, User } from "lucide-react";
+import { Bookmark, FolderTree, LayoutDashboard, User } from "lucide-react";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { labelKey: "nav.dashboard" as const, href: "/app", icon: LayoutDashboard },
+  { labelKey: "nav.categories" as const, href: "/app/categories", icon: FolderTree },
   { labelKey: "nav.account" as const, href: "/account", icon: User },
 ];
 
@@ -24,7 +25,7 @@ export const AppNavbar = () => {
           <span className="text-lg font-bold text-gray-900">{t("common.brand")}</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 sm:flex">
+        <nav className="hidden items-center gap-1 md:flex">
           {navItems.map(({ labelKey, href, icon: Icon }) => {
             const active = pathname === href;
             return (
@@ -47,17 +48,7 @@ export const AppNavbar = () => {
 
         <div className="flex items-center gap-2">
           <LanguageSwitcher compact />
-          <Link to="/account" className="sm:hidden">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full text-muted-foreground hover:text-primary"
-              aria-label={t("nav.account")}
-            >
-              <User className="h-5 w-5" />
-            </Button>
-          </Link>
-          <Link to="/" className="hidden sm:block">
+          <Link to="/" className="hidden md:block">
             <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-primary">
               {t("common.home")}
             </Button>

@@ -5,6 +5,7 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { AppNavbar } from "@/components/app/AppNavbar";
+import { AppBottomNav } from "@/components/app/AppBottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -133,12 +134,13 @@ const Account = () => {
     return (
       <div className="landing-page min-h-screen bg-gray-50">
         <AppNavbar />
-        <div className="flex min-h-[calc(100vh-65px)] items-center justify-center">
+        <div className="flex min-h-[calc(100vh-65px)] items-center justify-center pb-24 md:pb-0">
           <div className="text-center">
             <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
             <p className="text-gray-500">{t("common.loading")}</p>
           </div>
         </div>
+        <AppBottomNav />
       </div>
     );
   }
@@ -147,7 +149,7 @@ const Account = () => {
     <div className="landing-page min-h-screen bg-gray-50 text-gray-900">
       <AppNavbar />
 
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+      <main className="mx-auto max-w-3xl px-4 py-8 pb-24 sm:px-6 md:pb-10 lg:px-8 lg:py-10">
         <div
           className="mb-8 animate-fade-in-up opacity-0"
           style={{ animationDelay: "100ms", animationFillMode: "forwards" }}
@@ -290,6 +292,7 @@ const Account = () => {
           </section>
         </div>
       </main>
+      <AppBottomNav />
     </div>
   );
 };

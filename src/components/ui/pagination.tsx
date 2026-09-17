@@ -16,7 +16,7 @@ Pagination.displayName = "Pagination";
 
 const PaginationContent = React.forwardRef<HTMLUListElement, React.ComponentProps<"ul">>(
   ({ className, ...props }, ref) => (
-    <ul ref={ref} className={cn("flex flex-row items-center gap-1", className)} {...props} />
+    <ul ref={ref} className={cn("flex max-w-full flex-row flex-wrap items-center justify-center gap-1", className)} {...props} />
   ),
 );
 PaginationContent.displayName = "PaginationContent";
@@ -28,22 +28,40 @@ PaginationItem.displayName = "PaginationItem";
 
 type PaginationLinkProps = {
   isActive?: boolean;
+  href?: string;
 } & Pick<ButtonProps, "size"> &
-  React.ComponentProps<"a">;
+  Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "type">;
 
-const PaginationLink = ({ className, isActive, size = "icon", ...props }: PaginationLinkProps) => (
-  <a
-    aria-current={isActive ? "page" : undefined}
-    className={cn(
-      buttonVariants({
-        variant: isActive ? "outline" : "ghost",
-        size,
-      }),
-      className,
-    )}
-    {...props}
-  />
-);
+const PaginationLink = ({ className, isActive, size = "icon", href, ...props }: PaginationLinkProps) => {
+  const classes = cn(
+    buttonVariants({
+      variant: isActive ? "outline" : "ghost",
+      size,
+    }),
+    "shrink-0",
+    className,
+  );
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        aria-current={isActive ? "page" : undefined}
+        className={classes}
+        {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      aria-current={isActive ? "page" : undefined}
+      className={classes}
+      {...props}
+    />
+  );
+};
 PaginationLink.displayName = "PaginationLink";
 
 const PaginationPrevious = ({ className, ...props }: React.ComponentProps<typeof PaginationLink>) => (
