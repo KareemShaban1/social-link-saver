@@ -27,8 +27,8 @@ fi
 cd "$ROOT"
 
 echo "==> Frontend: ensure production API URL in .env"
-if ! grep -q 'VITE_API_URL=https://social-link-saver.digitaura.net/api' .env 2>/dev/null; then
-  echo "WARNING: Set VITE_API_URL=https://social-link-saver.digitaura.net/api in $ROOT/.env before building"
+if ! grep -q 'VITE_API_URL=https://link-nest.digitaura.net/api' .env 2>/dev/null; then
+  echo "WARNING: Set VITE_API_URL=https://link-nest.digitaura.net/api in $ROOT/.env before building"
 fi
 
 echo "==> Frontend: install & build (use lockfile — do not upgrade Vite on server)"
@@ -37,7 +37,7 @@ npm run build
 
 echo "==> Restart backend (PM2)"
 if command -v pm2 >/dev/null 2>&1; then
-  pm2 restart all || pm2 restart social-link-saver-backend || true
+  pm2 restart all || pm2 restart link-nest-backend || true
   pm2 list
 else
   echo "PM2 not found — restart your Node app in aaPanel (port 3007), do NOT run 'npm start' twice."

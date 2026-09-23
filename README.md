@@ -101,7 +101,7 @@ See [BACKEND_SETUP.md](./BACKEND_SETUP.md) for detailed backend setup instructio
 ## 📁 Project Structure
 
 ```
-social-link-saver/
+link-nest/
 ├── backend/              # Express.js backend
 │   ├── prisma/          # Prisma schema and migrations
 │   ├── src/

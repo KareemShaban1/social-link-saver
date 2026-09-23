@@ -14,7 +14,7 @@ function getAppOrigin(): string {
   if (typeof window !== "undefined" && window.location.origin) {
     return window.location.origin;
   }
-	return "https://social-link-saver.digitaura.net";
+	return "https://link-nest.digitaura.net";
 }
 
 interface SaveFromAppsSheetProps {

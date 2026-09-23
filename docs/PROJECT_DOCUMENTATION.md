@@ -122,7 +122,7 @@
 ## 📁 Project Structure
 
 ```
-social-link-saver/
+link-nest/
 ├── src/
 │   ├── components/          # React components
 │   │   ├── ui/              # shadcn/ui components
@@ -398,7 +398,7 @@ Category creation and management:
 
 ```bash
 git clone <repository-url>
-cd social-link-saver
+cd link-nest
 ```
 
 ### Step 2: Install Dependencies

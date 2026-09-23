@@ -1,6 +1,6 @@
 # Production deploy checklist
 
-Site: https://social-link-saver.digitaura.net/app
+Site: https://link-nest.digitaura.net/app
 
 ## Why updates don't appear
 
@@ -27,7 +27,7 @@ If installed to home screen: remove the icon, clear site data, open in browser o
 ## One-time: production `.env` (project root)
 
 ```env
-VITE_API_URL=https://social-link-saver.digitaura.net/api
+VITE_API_URL=https://link-nest.digitaura.net/api
 ```
 
 Rebuild frontend **after** setting this — Vite bakes the value into `dist/`.
@@ -39,7 +39,7 @@ If `npm install` fails with `vite@8` vs `@vitejs/plugin-react-swc`:
 The repo uses **Vite 5** (see `package-lock.json`). The server likely upgraded Vite without the lockfile.
 
 ```bash
-cd /www/wwwroot/social-link-saver.digitaura.net
+cd /www/wwwroot/link-nest.digitaura.net
 git checkout package.json package-lock.json
 rm -rf node_modules
 npm ci
@@ -51,7 +51,7 @@ Do **not** use `npm install vite@latest` or `--force` unless you intend to upgra
 ## Deploy after `git pull`
 
 ```bash
-cd /www/wwwroot/social-link-saver.digitaura.net
+cd /www/wwwroot/link-nest.digitaura.net
 git pull
 
 # Option A: script
@@ -78,7 +78,7 @@ The `is_favorite` column was likely already added by the app at startup (`ensure
 **Quick fix (run once on server):**
 
 ```bash
-cd /www/wwwroot/social-link-saver.digitaura.net
+cd /www/wwwroot/link-nest.digitaura.net
 chmod +x deploy/fix-failed-migration.sh
 ./deploy/fix-failed-migration.sh
 ./deploy/production-deploy.sh
@@ -87,7 +87,7 @@ chmod +x deploy/fix-failed-migration.sh
 **Or manually:**
 
 ```bash
-cd /www/wwwroot/social-link-saver.digitaura.net/backend
+cd /www/wwwroot/link-nest.digitaura.net/backend
 npx prisma migrate resolve --applied 20250627120000_add_link_favorites
 npx prisma migrate deploy
 cd ..
@@ -104,7 +104,7 @@ cd ..
 
 ```bash
 curl -s http://127.0.0.1:3007/health
-curl -s https://social-link-saver.digitaura.net/api/public/stats
+curl -s https://link-nest.digitaura.net/api/public/stats
 ```
 
 In browser DevTools → Network: JS files should have new hashes after deploy.  
