@@ -27,8 +27,8 @@ fi
 cd "$ROOT"
 
 echo "==> Frontend: ensure production API URL in .env"
-if ! grep -q 'VITE_API_URL=https://social-link-saver.kareemsoft.org/api' .env 2>/dev/null; then
-  echo "WARNING: Set VITE_API_URL=https://social-link-saver.kareemsoft.org/api in $ROOT/.env before building"
+if ! grep -q 'VITE_API_URL=https://social-link-saver.digitaura.net/api' .env 2>/dev/null; then
+  echo "WARNING: Set VITE_API_URL=https://social-link-saver.digitaura.net/api in $ROOT/.env before building"
 fi
 
 echo "==> Frontend: install & build (use lockfile — do not upgrade Vite on server)"
