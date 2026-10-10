@@ -16,7 +16,9 @@ import {
   Eye,
   MoreVertical,
   Star,
+  Bell,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -47,6 +49,8 @@ interface LinkCardProps {
   description?: string;
   platform: string;
   isFavorite?: boolean;
+  tags?: Array<{ id: string; name: string } | string>;
+  remindAt?: string | null;
   category?: {
     name: string;
     color: string;
@@ -54,6 +58,7 @@ interface LinkCardProps {
   categories: Category[];
   onDelete: () => void;
   onFavoriteChange?: (id: string, isFavorite: boolean) => void;
+  onTagClick?: (tag: string) => void;
   onEdit?: (link: {
     id: string;
     title: string;
@@ -62,6 +67,8 @@ interface LinkCardProps {
     platform: string;
     category_id?: string;
     isFavorite?: boolean;
+    tags?: string[];
+    remindAt?: string | null;
   }) => void;
 }
 
@@ -133,10 +140,13 @@ export const LinkCard = ({
   description,
   platform,
   isFavorite = false,
+  tags = [],
+  remindAt = null,
   category,
   categories,
   onDelete,
   onFavoriteChange,
+  onTagClick,
   onEdit,
 }: LinkCardProps) => {
   const { toast } = useToast();
@@ -208,6 +218,28 @@ export const LinkCard = ({
     }
   };
 
+  const tagNames = useMemo(
+    () =>
+      tags
+        .map((tag) => (typeof tag === "string" ? tag : tag.name))
+        .filter(Boolean),
+    [tags],
+  );
+
+  const reminderLabel = useMemo(() => {
+    if (!remindAt) return null;
+    const date = new Date(remindAt);
+    if (Number.isNaN(date.getTime())) return null;
+    const due = date.getTime() <= Date.now();
+    const formatted = date.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return { due, formatted };
+  }, [remindAt]);
+
   const handleEdit = () => {
     if (onEdit) {
       const categoryId = categories.find((c) => c.name === category?.name)?.id;
@@ -219,6 +251,8 @@ export const LinkCard = ({
         platform,
         category_id: categoryId,
         isFavorite: favorite,
+        tags: tagNames,
+        remindAt,
       });
     }
   };
@@ -405,18 +439,49 @@ export const LinkCard = ({
       )}
 
       <div className="mt-3 flex min-h-0 flex-1 flex-col gap-2 sm:mt-4">
-        {category && (
-          <span
-            className="inline-flex max-w-full items-center self-start truncate rounded-full px-2.5 py-1 text-[11px] font-medium sm:text-xs"
-            style={{
-              backgroundColor: `${category.color}18`,
-              color: category.color,
-              border: `1px solid ${category.color}35`,
-            }}
-            title={getCategoryDisplay() ?? category.name}
-          >
-            <span className="truncate">{getCategoryDisplay()}</span>
-          </span>
+        {(category || reminderLabel || tagNames.length > 0) && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {category && (
+              <span
+                className="inline-flex max-w-full items-center self-start truncate rounded-full px-2.5 py-1 text-[11px] font-medium sm:text-xs"
+                style={{
+                  backgroundColor: `${category.color}18`,
+                  color: category.color,
+                  border: `1px solid ${category.color}35`,
+                }}
+                title={getCategoryDisplay() ?? category.name}
+              >
+                <span className="truncate">{getCategoryDisplay()}</span>
+              </span>
+            )}
+            {reminderLabel && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  reminderLabel.due
+                    ? "border-amber-300 bg-amber-50 text-amber-800"
+                    : "border-sky-200 bg-sky-50 text-sky-800",
+                )}
+                title={reminderLabel.due ? t("linkCard.reminderDue") : t("linkCard.reminder")}
+              >
+                <Bell className="h-3 w-3" />
+                {reminderLabel.due
+                  ? t("linkCard.reminderDue")
+                  : t("linkCard.reminderOn", { date: reminderLabel.formatted })}
+              </Badge>
+            )}
+            {tagNames.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => onTagClick?.(tag)}
+                className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-muted"
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
         )}
         {videoInfo.isVideo && (
           <Button

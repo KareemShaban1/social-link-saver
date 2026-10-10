@@ -8,7 +8,8 @@ import categoryRoutes from './routes/category.routes.js';
 import userRoutes from './routes/user.routes.js';
 import metadataRoutes, { handleFacebookResolveUrl } from './routes/metadata.routes.js';
 import publicRoutes from './routes/public.routes.js';
-import { ensureLinksFavoritesColumn } from './lib/ensureSchema.js';
+import tagRoutes from './routes/tag.routes.js';
+import { ensureLinksFavoritesColumn, ensureTagsAndRemindersSchema } from './lib/ensureSchema.js';
 
 dotenv.config();
 
@@ -52,6 +53,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/links', linkRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/tags', tagRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/metadata', metadataRoutes);
 /** When nginx uses `proxy_pass http://127.0.0.1:PORT/;` under `location /api/`, the `/api` prefix is stripped — these paths still hit Node. */
@@ -71,6 +73,7 @@ app.use((req, res) => {
 
 app.listen(PORT, async () => {
   await ensureLinksFavoritesColumn();
+  await ensureTagsAndRemindersSchema();
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 Frontend URL: ${FRONTEND_URL}`);
 });

@@ -14,12 +14,29 @@ const API_URL = resolveApiBaseUrl(import.meta.env.VITE_API_URL);
 
 function normalizeLink(link: Record<string, unknown>) {
   const isFavorite = Boolean(link.isFavorite ?? link.is_favorite ?? false);
+  const remindAt = (link.remindAt ?? link.remind_at ?? null) as string | null;
+  const tagsRaw = Array.isArray(link.tags) ? link.tags : [];
+  const tags = tagsRaw
+    .map((tag) => {
+      if (typeof tag === 'string') return { id: tag, name: tag };
+      if (tag && typeof tag === 'object') {
+        const t = tag as { id?: string; name?: string; tag?: { id?: string; name?: string } };
+        if (t.tag?.name) return { id: t.tag.id ?? t.tag.name, name: t.tag.name };
+        if (t.name) return { id: t.id ?? t.name, name: t.name };
+      }
+      return null;
+    })
+    .filter((t): t is { id: string; name: string } => Boolean(t?.name));
+
   return {
     ...link,
     category_id: link.categoryId,
     categoryId: link.categoryId,
     isFavorite,
     is_favorite: isFavorite,
+    remindAt,
+    remind_at: remindAt,
+    tags,
   };
 }
 
@@ -110,12 +127,16 @@ class ApiClient {
     platform?: string;
     search?: string;
     favorite?: boolean;
+    tag?: string;
+    due?: 'true' | 'upcoming' | 'any';
   }) {
     const params = new URLSearchParams();
     if (filters?.categoryId) params.append('categoryId', filters.categoryId);
     if (filters?.platform) params.append('platform', filters.platform);
     if (filters?.search) params.append('search', filters.search);
     if (filters?.favorite) params.append('favorite', 'true');
+    if (filters?.tag) params.append('tag', filters.tag);
+    if (filters?.due) params.append('due', filters.due);
 
     const query = params.toString();
     const response = await this.request<{ links: any[] }>(
@@ -128,7 +149,8 @@ class ApiClient {
   }
 
   async getLink(id: string) {
-    return this.request<{ link: any }>(`/links/${id}`);
+    const response = await this.request<{ link: any }>(`/links/${id}`);
+    return { link: normalizeLink(response.link) };
   }
 
   async createLink(link: {
@@ -138,11 +160,14 @@ class ApiClient {
     platform: string;
     categoryId?: string;
     isFavorite?: boolean;
+    tags?: string[];
+    remindAt?: string | null;
   }) {
-    return this.request<{ link: any }>('/links', {
+    const response = await this.request<{ link: any }>('/links', {
       method: 'POST',
       body: JSON.stringify(link),
     });
+    return { link: normalizeLink(response.link) };
   }
 
   async updateLink(
@@ -154,6 +179,8 @@ class ApiClient {
       platform?: string;
       categoryId?: string;
       isFavorite?: boolean;
+      tags?: string[];
+      remindAt?: string | null;
     }
   ) {
     const response = await this.request<{ link: any }>(`/links/${id}`, {
@@ -161,6 +188,41 @@ class ApiClient {
       body: JSON.stringify(link),
     });
     return { link: normalizeLink(response.link) };
+  }
+
+  async exportLinks(format: 'json' | 'csv' = 'json') {
+    const url = `${this.baseUrl}/links/export?format=${format}`;
+    const headers: HeadersInit = {};
+    if (this.token) headers.Authorization = `Bearer ${this.token}`;
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Export failed' }));
+      throw new Error(error.error || 'Export failed');
+    }
+    if (format === 'csv') {
+      return { blob: await response.blob(), filename: 'links-export.csv' };
+    }
+    return { json: await response.json(), filename: 'links-export.json' };
+  }
+
+  async importLinks(links: Array<Record<string, unknown>>) {
+    return this.request<{ imported: number; skipped: number; errors: string[] }>(
+      '/links/import',
+      {
+        method: 'POST',
+        body: JSON.stringify({ links }),
+      }
+    );
+  }
+
+  async getTags() {
+    return this.request<{
+      tags: Array<{ id: string; name: string; count: number; createdAt: string }>;
+    }>('/tags');
+  }
+
+  async deleteTag(id: string) {
+    return this.request<{ message: string }>(`/tags/${id}`, { method: 'DELETE' });
   }
 
   async toggleLinkFavorite(id: string, isFavorite: boolean) {

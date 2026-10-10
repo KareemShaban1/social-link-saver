@@ -29,7 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Bookmark, Filter, BarChart3, FolderTree, Tags, Star, ChevronLeft, ChevronRight, RefreshCw, Settings } from "lucide-react";
+import { Search, Bookmark, Filter, BarChart3, FolderTree, Tags, Star, ChevronLeft, ChevronRight, RefreshCw, Settings, Bell } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -41,6 +41,7 @@ import { detectPlatformFromUrl } from "@/lib/urlMetadata";
 import { consumePendingShare, PENDING_SHARE_READY_EVENT } from "@/lib/pendingShare";
 import { cn } from "@/lib/utils";
 import { SaveFromAppsSheet } from "@/components/SaveFromAppsSheet";
+import { ExportImportDialog } from "@/components/ExportImportDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Link {
@@ -52,6 +53,8 @@ interface Link {
   isFavorite?: boolean;
   category_id?: string;
   categoryId?: string;
+  tags?: Array<{ id: string; name: string }>;
+  remindAt?: string | null;
   categories?: {
     name: string;
     color: string;
@@ -74,6 +77,8 @@ interface ApiLink {
   isFavorite?: boolean;
   categoryId?: string;
   category_id?: string;
+  tags?: Array<{ id: string; name: string }>;
+  remindAt?: string | null;
   category?: {
     name: string;
     color: string;
@@ -219,7 +224,9 @@ const Index = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showDueReminders, setShowDueReminders] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [linkToEdit, setLinkToEdit] = useState<{
@@ -230,6 +237,8 @@ const Index = () => {
     platform: string;
     category_id?: string;
     isFavorite?: boolean;
+    tags?: string[];
+    remindAt?: string | null;
   } | null>(null);
   const [createPrefill, setCreatePrefill] = useState<{
     title?: string;
@@ -264,6 +273,8 @@ const Index = () => {
           ...link,
           isFavorite: Boolean(link.isFavorite ?? (link as { is_favorite?: boolean }).is_favorite ?? false),
           category_id: link.categoryId ?? link.category_id ?? undefined,
+          tags: link.tags ?? [],
+          remindAt: link.remindAt ?? null,
           categories: link.category ? {
             name: link.category.name,
             color: link.category.color,
@@ -322,10 +333,30 @@ const Index = () => {
 
   // Get unique platforms from links
   const availablePlatforms = Array.from(new Set(links.map(link => link.platform)));
+  const availableTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const link of links) {
+      for (const tag of link.tags ?? []) {
+        if (tag?.name) set.add(tag.name);
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [links]);
+  const dueRemindersCount = useMemo(
+    () =>
+      links.filter((link) => {
+        if (!link.remindAt) return false;
+        const d = new Date(link.remindAt);
+        return !Number.isNaN(d.getTime()) && d.getTime() <= Date.now();
+      }).length,
+    [links],
+  );
   const activeFiltersCount =
     (selectedCategory ? 1 : 0) +
     (selectedPlatform ? 1 : 0) +
+    (selectedTag ? 1 : 0) +
     (showFavoritesOnly ? 1 : 0) +
+    (showDueReminders ? 1 : 0) +
     (searchQuery.trim() ? 1 : 0);
 
   // When a category is selected, show links in that category or any descendant (nested subcategories)
@@ -347,12 +378,24 @@ const Index = () => {
     const categoryMatch = selectedCategory === null || categoryIdMatches(linkCatId);
     const platformMatch = selectedPlatform === null || link.platform === selectedPlatform;
     const favoritesMatch = !showFavoritesOnly || Boolean(link.isFavorite);
+    const tagMatch =
+      selectedTag === null ||
+      (link.tags ?? []).some((tag) => tag.name === selectedTag);
+    const reminderMatch =
+      !showDueReminders ||
+      (() => {
+        if (!link.remindAt) return false;
+        const d = new Date(link.remindAt);
+        return !Number.isNaN(d.getTime()) && d.getTime() <= Date.now();
+      })();
+    const q = searchQuery.toLowerCase();
     const searchMatch =
       searchQuery === "" ||
-      link.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      link.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      link.platform.toLowerCase().includes(searchQuery.toLowerCase());
-    return categoryMatch && platformMatch && favoritesMatch && searchMatch;
+      link.title.toLowerCase().includes(q) ||
+      link.description?.toLowerCase().includes(q) ||
+      link.platform.toLowerCase().includes(q) ||
+      (link.tags ?? []).some((tag) => tag.name.includes(q));
+    return categoryMatch && platformMatch && favoritesMatch && tagMatch && reminderMatch && searchMatch;
   })
     .sort((a, b) => {
       if (a.isFavorite !== b.isFavorite) {
@@ -393,6 +436,15 @@ const Index = () => {
     [appView, setAppView],
   );
 
+  const clearAllFilters = useCallback(() => {
+    setSelectedCategory(null);
+    setSelectedPlatform(null);
+    setSelectedTag(null);
+    setShowDueReminders(false);
+    applyFavoritesOnly(false);
+    setSearchQuery("");
+  }, [applyFavoritesOnly]);
+
   useEffect(() => {
     if (appView === "categories") {
       navigate("/app/categories", { replace: true });
@@ -403,7 +455,7 @@ const Index = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, selectedPlatform, showFavoritesOnly, searchQuery]);
+  }, [selectedCategory, selectedPlatform, selectedTag, showFavoritesOnly, showDueReminders, searchQuery]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -517,12 +569,14 @@ const Index = () => {
         >
           <AddLinkDialog
             categories={categories}
+            tagSuggestions={availableTags}
             onLinkAdded={fetchData}
             onCategoriesChange={fetchData}
             createPrefill={createPrefill}
             onCreatePrefillConsumed={() => setCreatePrefill(null)}
           />
           <SaveFromAppsSheet />
+          <ExportImportDialog onImported={() => void fetchData()} />
           <Button
             asChild
             variant="outline"
@@ -648,19 +702,37 @@ const Index = () => {
                 <div className="mt-4 space-y-6 pb-6">
                   <div className="space-y-2">
                     <div className="text-sm font-medium text-gray-500">{t("app.favorites")}</div>
-                    <Button
-                      type="button"
-                      variant={showFavoritesOnly ? "default" : "outline"}
-                      size="sm"
-                      className={cn(
-                        "rounded-full",
-                        showFavoritesOnly && "bg-amber-500 hover:bg-amber-600",
-                      )}
-                      onClick={() => applyFavoritesOnly(!showFavoritesOnly)}
-                    >
-                      <Star className={cn("mr-2 h-4 w-4", showFavoritesOnly && "fill-current")} />
-                      {t("app.favoritesOnly")}
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant={showFavoritesOnly ? "default" : "outline"}
+                        size="sm"
+                        className={cn(
+                          "rounded-full",
+                          showFavoritesOnly && "bg-amber-500 hover:bg-amber-600",
+                        )}
+                        onClick={() => applyFavoritesOnly(!showFavoritesOnly)}
+                      >
+                        <Star className={cn("mr-2 h-4 w-4", showFavoritesOnly && "fill-current")} />
+                        {t("app.favoritesOnly")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={showDueReminders ? "default" : "outline"}
+                        size="sm"
+                        className={cn(
+                          "rounded-full",
+                          showDueReminders && "bg-sky-600 hover:bg-sky-700",
+                        )}
+                        onClick={() => setShowDueReminders((v) => !v)}
+                      >
+                        <Bell className="mr-2 h-4 w-4" />
+                        {t("app.remindersDue")}
+                        {dueRemindersCount > 0 && (
+                          <Badge className="ms-2 bg-white/20 hover:bg-white/20">{dueRemindersCount}</Badge>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                   {availablePlatforms.length > 0 && (
                     <div className="space-y-2">
@@ -674,6 +746,34 @@ const Index = () => {
                       </div>
                     </div>
                   )}
+                  {availableTags.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">{t("app.tags")}</div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={selectedTag === null ? "default" : "outline"}
+                          className="rounded-full"
+                          onClick={() => setSelectedTag(null)}
+                        >
+                          {t("app.allTags")}
+                        </Button>
+                        {availableTags.map((tag) => (
+                          <Button
+                            key={tag}
+                            type="button"
+                            size="sm"
+                            variant={selectedTag === tag ? "default" : "outline"}
+                            className="rounded-full"
+                            onClick={() => setSelectedTag(tag)}
+                          >
+                            #{tag}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <div className="text-sm font-medium text-gray-500">{t("app.category")}</div>
                     <CategoryFilter
@@ -683,15 +783,12 @@ const Index = () => {
                       compact
                     />
                   </div>
-                  {(selectedCategory !== null || selectedPlatform !== null || showFavoritesOnly || searchQuery.trim() !== "") && (
+                  {activeFiltersCount > 0 && (
                     <Button
                       variant="outline"
                       className="w-full"
                       onClick={() => {
-                        setSelectedCategory(null);
-                        setSelectedPlatform(null);
-                        applyFavoritesOnly(false);
-                        setSearchQuery("");
+                        clearAllFilters();
                         setFiltersOpen(false);
                       }}
                     >
@@ -717,19 +814,37 @@ const Index = () => {
             <Separator />
             <div className="space-y-2">
               <div className="text-sm font-medium text-gray-500">{t("app.favorites")}</div>
-              <Button
-                type="button"
-                variant={showFavoritesOnly ? "default" : "outline"}
-                size="sm"
-                className={cn(
-                  "rounded-full",
-                  showFavoritesOnly && "border-transparent bg-amber-500 hover:bg-amber-600",
-                )}
-                onClick={() => applyFavoritesOnly(!showFavoritesOnly)}
-              >
-                <Star className={cn("mr-2 h-4 w-4", showFavoritesOnly && "fill-current")} />
-                {t("app.favoritesOnly")}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant={showFavoritesOnly ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "rounded-full",
+                    showFavoritesOnly && "border-transparent bg-amber-500 hover:bg-amber-600",
+                  )}
+                  onClick={() => applyFavoritesOnly(!showFavoritesOnly)}
+                >
+                  <Star className={cn("mr-2 h-4 w-4", showFavoritesOnly && "fill-current")} />
+                  {t("app.favoritesOnly")}
+                </Button>
+                <Button
+                  type="button"
+                  variant={showDueReminders ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "rounded-full",
+                    showDueReminders && "border-transparent bg-sky-600 hover:bg-sky-700",
+                  )}
+                  onClick={() => setShowDueReminders((v) => !v)}
+                >
+                  <Bell className="mr-2 h-4 w-4" />
+                  {t("app.remindersDue")}
+                  {dueRemindersCount > 0 && (
+                    <Badge className="ms-2 bg-white/20 hover:bg-white/20">{dueRemindersCount}</Badge>
+                  )}
+                </Button>
+              </div>
             </div>
             <div className="relative max-w-xl">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -754,6 +869,34 @@ const Index = () => {
                 </div>
               </div>
             )}
+            {availableTags.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-gray-500">{t("app.tags")}</div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={selectedTag === null ? "default" : "outline"}
+                    className="rounded-full"
+                    onClick={() => setSelectedTag(null)}
+                  >
+                    {t("app.allTags")}
+                  </Button>
+                  {availableTags.map((tag) => (
+                    <Button
+                      key={tag}
+                      type="button"
+                      size="sm"
+                      variant={selectedTag === tag ? "default" : "outline"}
+                      className="rounded-full"
+                      onClick={() => setSelectedTag(tag)}
+                    >
+                      #{tag}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* <div className="space-y-2">
               <div className="text-sm font-medium text-gray-500">{t("app.category")}</div>
               <CategoryFilter
@@ -762,16 +905,11 @@ const Index = () => {
                 onSelectCategory={setSelectedCategory}
               />
             </div> */}
-            {(selectedCategory !== null || selectedPlatform !== null || showFavoritesOnly || searchQuery.trim() !== "") && (
+            {activeFiltersCount > 0 && (
               <Button
                 variant="outline"
                 className="rounded-full border-gray-200 hover:border-indigo-200 hover:bg-indigo-50"
-                onClick={() => {
-                  setSelectedCategory(null);
-                  setSelectedPlatform(null);
-                  applyFavoritesOnly(false);
-                  setSearchQuery("");
-                }}
+                onClick={clearAllFilters}
               >
                 {t("common.clearAll")}
               </Button>
@@ -794,11 +932,12 @@ const Index = () => {
                   )}
               </span>
               <div className="flex flex-wrap items-center gap-2">
-                {(selectedCategory !== null || selectedPlatform !== null || showFavoritesOnly || searchQuery.trim() !== "") && (
+                {activeFiltersCount > 0 && (
                   <Badge className="bg-primary/10 text-primary hover:bg-primary/10">{t("common.filtered")}</Badge>
                 )}
                 <AddLinkDialog
                   categories={categories}
+                  tagSuggestions={availableTags}
                   onLinkAdded={fetchData}
                   onCategoriesChange={fetchData}
                   linkToEdit={linkToEdit}
@@ -925,7 +1064,9 @@ const Index = () => {
                       <span>{t("app.filterCategory", { name: selectedCategoryName })} </span>
                     )}
                     {selectedPlatform && <span>{t("app.filterPlatform", { name: selectedPlatform })} </span>}
+                    {selectedTag && <span>{t("app.filterTag", { name: selectedTag })} </span>}
                     {showFavoritesOnly && <span>{t("app.filterFavorites")} </span>}
+                    {showDueReminders && <span>{t("app.filterReminders")} </span>}
                     {searchQuery.trim() && (
                       <span>{t("app.filterSearch", { query: searchQuery.trim() })}</span>
                     )}
@@ -1000,18 +1141,18 @@ const Index = () => {
             </p>
             <div className="flex items-center justify-center gap-2 flex-wrap">
               {links.length === 0 && (
-                <AddLinkDialog categories={categories} onLinkAdded={fetchData} onCategoriesChange={fetchData} />
+                <AddLinkDialog
+                  categories={categories}
+                  tagSuggestions={availableTags}
+                  onLinkAdded={fetchData}
+                  onCategoriesChange={fetchData}
+                />
               )}
-              {(links.length > 0 || searchQuery.trim() !== "" || selectedCategory || selectedPlatform || showFavoritesOnly) && (
+              {(links.length > 0 || activeFiltersCount > 0) && (
                 <Button
                   variant="outline"
                   className="rounded-full border-gray-200 hover:border-indigo-200 hover:bg-indigo-50"
-                  onClick={() => {
-                    setSelectedCategory(null);
-                    setSelectedPlatform(null);
-                    applyFavoritesOnly(false);
-                    setSearchQuery("");
-                  }}
+                  onClick={clearAllFilters}
                 >
                   {t("common.clearAll")}
                 </Button>
@@ -1033,10 +1174,13 @@ const Index = () => {
                 description={link.description}
                 platform={link.platform}
                 isFavorite={link.isFavorite}
+                tags={link.tags}
+                remindAt={link.remindAt}
                 category={link.categories}
                 categories={categories}
                 onDelete={fetchData}
                 onFavoriteChange={handleFavoriteChange}
+                onTagClick={setSelectedTag}
                 onEdit={setLinkToEdit}
               />
               </div>

@@ -20,6 +20,7 @@ model User {
   // Relations
   categories    Category[]
   links         Link[]
+  tags          Tag[]
   profile       UserProfile?
   subscription  UserSubscription?
 
@@ -54,16 +55,47 @@ model Link {
   categoryId  String?   @map("category_id") @db.Char(36)
   userId      String    @map("user_id") @db.Char(36)
   isFavorite  Boolean   @default(false) @map("is_favorite")
+  remindAt    DateTime? @map("remind_at")
   createdAt   DateTime  @default(now()) @map("created_at")
 
   // Relations
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags        LinkTag[]
 
   @@index([userId])
   @@index([categoryId])
   @@index([userId, isFavorite])
+  @@index([userId, remindAt])
   @@map("links")
+}
+
+model Tag {
+  id        String    @id @default(uuid()) @db.Char(36)
+  name      String    @db.VarChar(100)
+  userId    String    @map("user_id") @db.Char(36)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links     LinkTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("tags")
+}
+
+model LinkTag {
+  linkId String @map("link_id") @db.Char(36)
+  tagId  String @map("tag_id") @db.Char(36)
+
+  // Relations
+  link   Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([linkId, tagId])
+  @@index([tagId])
+  @@map("link_tags")
 }
 
 model SubscriptionPlan {

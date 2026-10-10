@@ -15,6 +15,7 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { formFieldClass, formSelectTriggerClass } from "@/lib/formStyles";
 import { Checkbox } from "@/components/ui/checkbox";
 import { VoiceTextField } from "@/components/VoiceTextField";
+import { TagInput } from "@/components/TagInput";
 import { stopAllSpeechToText } from "@/hooks/useSpeechToText";
 import { persistSpeechLocale, readStoredSpeechLocale } from "@/lib/speechRecognition";
 import type { Locale, TranslationKey } from "@/i18n";
@@ -34,10 +35,13 @@ interface LinkToEdit {
   platform: string;
   category_id?: string;
   isFavorite?: boolean;
+  tags?: string[];
+  remindAt?: string | null;
 }
 
 interface AddLinkDialogProps {
   categories: Category[];
+  tagSuggestions?: string[];
   onLinkAdded: () => void;
   onCategoriesChange?: () => Promise<void> | void;
   linkToEdit?: LinkToEdit | null;
@@ -52,6 +56,21 @@ interface AddLinkDialogProps {
     categoryName?: string;
   } | null;
   onCreatePrefillConsumed?: () => void;
+}
+
+function toDatetimeLocalValue(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromDatetimeLocalValue(value: string): string | null {
+  if (!value.trim()) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
 }
 
 const PLATFORMS = [
@@ -97,6 +116,7 @@ function flattenCategoriesTree(categories: Category[]): { category: Category; de
 
 export const AddLinkDialog = ({
   categories,
+  tagSuggestions = [],
   onLinkAdded,
   onCategoriesChange,
   linkToEdit,
@@ -113,6 +133,8 @@ export const AddLinkDialog = ({
   const [categoryId, setCategoryId] = useState("");
   const [categoryName, setCategoryName] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [remindAtLocal, setRemindAtLocal] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetchingMetadata, setFetchingMetadata] = useState(false);
   const { toast } = useToast();
@@ -140,6 +162,8 @@ export const AddLinkDialog = ({
       setCategoryId(linkToEdit.category_id || "");
       setCategoryName("");
       setIsFavorite(linkToEdit.isFavorite ?? false);
+      setTags(linkToEdit.tags ?? []);
+      setRemindAtLocal(toDatetimeLocalValue(linkToEdit.remindAt));
     }
   }, [linkToEdit, open]);
 
@@ -172,6 +196,8 @@ export const AddLinkDialog = ({
     setCategoryId(createPrefill.categoryId ?? "");
     setCategoryName(createPrefill.categoryName ?? "");
     setIsFavorite(false);
+    setTags([]);
+    setRemindAtLocal("");
     setOpen(true);
 
     onCreatePrefillConsumed?.();
@@ -206,6 +232,8 @@ export const AddLinkDialog = ({
     setCategoryId("");
     setCategoryName("");
     setIsFavorite(false);
+    setTags([]);
+    setRemindAtLocal("");
   }, [open]);
 
   /**
@@ -503,6 +531,8 @@ export const AddLinkDialog = ({
       }
     }
 
+    const remindAt = fromDatetimeLocalValue(remindAtLocal);
+
     try {
       if (isEditMode && linkToEdit) {
         // Update existing link
@@ -513,6 +543,8 @@ export const AddLinkDialog = ({
           platform,
           categoryId: finalCategoryId || undefined,
           isFavorite,
+          tags,
+          remindAt,
         });
 
         toast({
@@ -528,6 +560,8 @@ export const AddLinkDialog = ({
           platform,
           categoryId: finalCategoryId || undefined,
           isFavorite,
+          tags,
+          remindAt,
         });
 
         toast({
@@ -544,6 +578,8 @@ export const AddLinkDialog = ({
       setCategoryId("");
       setCategoryName("");
       setIsFavorite(false);
+      setTags([]);
+      setRemindAtLocal("");
       setOpen(false);
       if (onEditComplete) {
         onEditComplete();
@@ -718,6 +754,39 @@ export const AddLinkDialog = ({
               onSpeechLocaleChange={handleSpeechLocaleChange}
               enabled={open}
             />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-gray-700">{t("addLink.tagsOptional")}</Label>
+            <TagInput
+              value={tags}
+              onChange={setTags}
+              suggestions={tagSuggestions}
+              placeholder={t("addLink.tagsPlaceholder")}
+              disabled={loading}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="remindAt" className="text-gray-700">{t("addLink.reminderOptional")}</Label>
+            <div className="flex gap-2">
+              <Input
+                id="remindAt"
+                type="datetime-local"
+                value={remindAtLocal}
+                onChange={(e) => setRemindAtLocal(e.target.value)}
+                className={formFieldClass}
+              />
+              {remindAtLocal && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRemindAtLocal("")}
+                  className="shrink-0"
+                >
+                  {t("addLink.clearReminder")}
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-gray-400">{t("addLink.reminderHint")}</p>
           </div>
           <div className="flex items-center gap-2">
             <Checkbox
