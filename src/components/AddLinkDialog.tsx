@@ -9,7 +9,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { extractUrlMetadata, detectPlatformFromUrl } from "@/lib/urlMetadata";
-import { extractUrlFromSharePayload, isShareableHttpUrl } from "@/lib/pendingShare";
+import { extractUrlFromSharePayload, isShareableHttpUrl, textWithoutLinks } from "@/lib/pendingShare";
 import { needsFacebookShareResolution } from "@/lib/videoUtils";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { formFieldClass, formSelectTriggerClass } from "@/lib/formStyles";
@@ -161,9 +161,10 @@ export const AddLinkDialog = ({
         ? createPrefill.url
         : "";
 
-    setTitle(createPrefill.title ?? "");
-    setUrl(createPrefill.url ?? "");
-    setDescription(createPrefill.description ?? "");
+    const prefillUrl = createPrefill.url ?? "";
+    setTitle(textWithoutLinks(createPrefill.title, prefillUrl) ?? "");
+    setUrl(prefillUrl);
+    setDescription(textWithoutLinks(createPrefill.description, prefillUrl) ?? "");
     setPlatform(
       createPrefill.platform ??
         (createPrefill.url ? detectPlatformFromUrl(createPrefill.url) : "")
@@ -332,11 +333,19 @@ export const AddLinkDialog = ({
       const metadata = await extractUrlMetadata(urlToFetch, shareContentRef.current);
       if (generation !== fetchGenerationRef.current) return;
 
-      if (metadata.title && !titleTouchedRef.current) {
-        setTitle((current) => (current.trim() ? current : metadata.title));
+      if (!titleTouchedRef.current) {
+        setTitle((current) => {
+          const existing = textWithoutLinks(current, urlToFetch) ?? "";
+          if (existing) return existing;
+          return textWithoutLinks(metadata.title, urlToFetch) ?? "";
+        });
       }
-      if (metadata.description && !descriptionTouchedRef.current) {
-        setDescription((current) => (current.trim() ? current : metadata.description));
+      if (!descriptionTouchedRef.current) {
+        setDescription((current) => {
+          const existing = textWithoutLinks(current, urlToFetch) ?? "";
+          if (existing) return existing;
+          return textWithoutLinks(metadata.description, urlToFetch) ?? "";
+        });
       }
       if (metadata.platform && !platformTouchedRef.current) {
         setPlatform(metadata.platform);

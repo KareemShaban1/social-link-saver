@@ -1,3 +1,5 @@
+import { fetchOEmbedMetadata } from "./oembedMetadata.js";
+
 interface MetadataResult {
 	title: string;
 	description: string;
@@ -68,15 +70,50 @@ export function detectPlatformFromUrl(url: string): string {
 	}
 }
 
-function stripUrls(value: string): string {
-	return value.replace(URL_IN_TEXT_RE, ' ').replace(/\s+/g, ' ').trim();
+const BARE_LINK_RE =
+	/(?:^|[\s<(])((?:www\.)?(?:instagram\.com|facebook\.com|fb\.com|fb\.watch|tiktok\.com|vm\.tiktok\.com|linkedin\.com|lnkd\.in|twitter\.com|x\.com|youtube\.com|youtu\.be|pinterest\.com|pin\.it|reddit\.com|redd\.it)\/[^\s<>"'`]+)/gi;
+
+function looksLikeLinkOnly(value: string): boolean {
+	const trimmed = value.trim();
+	if (!trimmed) return true;
+	if (/^https?:\/\//i.test(trimmed)) return true;
+	if (/^www\./i.test(trimmed) && trimmed.includes('.')) return true;
+	if (/^[a-z0-9.-]+\.[a-z]{2,}\//i.test(trimmed)) return true;
+	if (/^\/?(reel|p|posts?|video|share|v|t)\//i.test(trimmed)) return true;
+	return false;
 }
 
-function isUsefulText(value: string | undefined | null): value is string {
+function stripUrls(value: string, knownUrl?: string): string {
+	let next = value.replace(URL_IN_TEXT_RE, ' ');
+	next = next.replace(BARE_LINK_RE, (match, link: string) => match.replace(link, ' '));
+
+	if (knownUrl) {
+		const variants = new Set<string>([knownUrl]);
+		try {
+			const parsed = new URL(knownUrl);
+			variants.add(parsed.href);
+			variants.add(`${parsed.host}${parsed.pathname}`);
+			variants.add(`${parsed.hostname}${parsed.pathname}`);
+			variants.add(parsed.pathname);
+		} catch {
+			/* ignore */
+		}
+		for (const variant of variants) {
+			if (!variant || variant === '/') continue;
+			next = next.split(variant).join(' ');
+		}
+	}
+
+	next = next.replace(/\s+/g, ' ').trim();
+	return looksLikeLinkOnly(next) ? '' : next;
+}
+
+function isUsefulText(value: string | undefined | null, knownUrl?: string): value is string {
 	if (!value) return false;
-	const trimmed = value.trim();
-	if (!trimmed) return false;
-	if (USELESS_TITLES.has(trimmed.toLowerCase())) return false;
+	const cleaned = stripUrls(value, knownUrl);
+	if (!cleaned) return false;
+	if (USELESS_TITLES.has(cleaned.toLowerCase())) return false;
+	if (looksLikeLinkOnly(cleaned)) return false;
 	return true;
 }
 
@@ -239,37 +276,59 @@ function extractTitleFromContent(content: string): string {
 }
 
 /**
- * Extracts metadata from a URL (title, description, platform) using page fetch and simple parsing.
- * Uses share-sheet text when social platforms block scrapers (common for IG/FB/TikTok).
+ * Extracts metadata from a URL (title, description, platform).
+ * Order: platform oEmbed APIs → Open Graph HTML → share-sheet caption.
+ * oEmbed is the reliable path for TikTok/YouTube/Meta when scrapers are blocked.
  */
 export async function extractMetadataWithAI(
 	url: string,
 	providedContent?: string
 ): Promise<MetadataResult> {
 	const platform = detectPlatformFromUrl(url);
-	const shareCaption = providedContent ? stripUrls(providedContent) : '';
+	const shareCaption = providedContent ? stripUrls(providedContent, url) : '';
+
+	let oembedTitle = '';
+	let oembedDescription = '';
+	try {
+		const oembed = await fetchOEmbedMetadata(url);
+		if (oembed) {
+			oembedTitle = stripUrls(oembed.title, url);
+			oembedDescription = stripUrls(oembed.description, url);
+		}
+	} catch (error) {
+		console.error('oEmbed metadata failed:', error);
+	}
 
 	let htmlMeta: HtmlMeta = { title: '', description: '' };
 	let pageText = '';
 
-	try {
-		const html = await fetchPageContent(url);
-		htmlMeta = extractMetaFromHTML(html);
-		pageText = extractTextFromHTML(html);
-	} catch (error) {
-		console.error('Failed to fetch page content:', error);
+	// Skip slow HTML fetch when oEmbed already gave useful fields.
+	if (!isUsefulText(oembedTitle, url) || !isUsefulText(oembedDescription, url)) {
+		try {
+			const html = await fetchPageContent(url);
+			htmlMeta = extractMetaFromHTML(html);
+			pageText = extractTextFromHTML(html);
+		} catch (error) {
+			console.error('Failed to fetch page content:', error);
+		}
 	}
 
+	const ogTitle = stripUrls(htmlMeta.title, url);
+	const ogDescription = stripUrls(htmlMeta.description, url);
+	const pageCaption = stripUrls(pageText, url);
+
 	const title =
-		(isUsefulText(htmlMeta.title) && htmlMeta.title) ||
-		(isUsefulText(shareCaption) && extractTitleFromContent(shareCaption)) ||
-		(isUsefulText(pageText) && extractTitleFromContent(pageText)) ||
-		extractTitleFromUrl(url);
+		(isUsefulText(oembedTitle, url) && oembedTitle) ||
+		(isUsefulText(ogTitle, url) && ogTitle) ||
+		(isUsefulText(shareCaption, url) && extractTitleFromContent(shareCaption)) ||
+		(isUsefulText(pageCaption, url) && extractTitleFromContent(pageCaption)) ||
+		'';
 
 	const description =
-		(isUsefulText(htmlMeta.description) && htmlMeta.description.slice(0, 500)) ||
-		(isUsefulText(shareCaption) && shareCaption.slice(0, 500)) ||
-		(isUsefulText(pageText) && pageText.slice(0, 500)) ||
+		(isUsefulText(oembedDescription, url) && oembedDescription.slice(0, 500)) ||
+		(isUsefulText(ogDescription, url) && ogDescription.slice(0, 500)) ||
+		(isUsefulText(shareCaption, url) && shareCaption.slice(0, 500)) ||
+		(isUsefulText(pageCaption, url) && pageCaption.slice(0, 500)) ||
 		'';
 
 	return {
@@ -277,28 +336,4 @@ export async function extractMetadataWithAI(
 		description,
 		platform,
 	};
-}
-
-/**
- * Extracts a readable title from URL (fallback)
- */
-function extractTitleFromUrl(url: string): string {
-	try {
-		const urlObj = new URL(url);
-		const pathname = urlObj.pathname;
-		const parts = pathname.replace(/^\/|\/$/g, '').split('/').filter(Boolean);
-
-		if (parts.length > 0) {
-			const lastPart = parts[parts.length - 1];
-			return decodeURIComponent(lastPart)
-				.replace(/[-_]/g, ' ')
-				.replace(/\.[^.]+$/, '')
-				.split('?')[0]
-				.trim();
-		}
-
-		return urlObj.hostname.replace(/^www\./, '');
-	} catch {
-		return url;
-	}
 }

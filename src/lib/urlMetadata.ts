@@ -1,5 +1,5 @@
 import { resolveApiBaseUrl } from '@/lib/api';
-import { stripUrlsFromShareText } from '@/lib/pendingShare';
+import { textWithoutLinks } from '@/lib/pendingShare';
 
 /**
  * Detects platform from URL domain
@@ -48,12 +48,16 @@ export function detectPlatformFromUrl(url: string): string {
  * Extracts metadata from a URL using AI backend service
  * Falls back to client-side extraction if backend is unavailable
  */
+function cleanField(value: string | undefined | null, url: string): string {
+  return textWithoutLinks(value, url) ?? '';
+}
+
 function metadataFromShareContent(
   url: string,
   platform: string,
   providedContent?: string
 ): { title: string; description: string; platform: string } | null {
-  const caption = providedContent ? stripUrlsFromShareText(providedContent) : '';
+  const caption = cleanField(providedContent, url);
   if (!caption) return null;
   return {
     title: caption.slice(0, 120),
@@ -86,11 +90,20 @@ export async function extractUrlMetadata(
 
     if (response.ok) {
       const data = await response.json();
-      // Accept title-only responses — FB/IG/TikTok often yield empty descriptions when scraped.
-      if (data.title?.trim()) {
+      const title = cleanField(data.title, url);
+      const description = cleanField(data.description, url) || shareFallback?.description || '';
+      // Never accept a URL (or URL leftover) as title/description.
+      if (title) {
         return {
-          title: data.title.trim(),
-          description: (data.description || shareFallback?.description || '').trim(),
+          title,
+          description,
+          platform: data.platform || platform,
+        };
+      }
+      if (description || shareFallback) {
+        return {
+          title: shareFallback?.title || '',
+          description: description || shareFallback?.description || '',
           platform: data.platform || platform,
         };
       }
@@ -201,11 +214,14 @@ async function extractUrlMetadataFallback(
         }
       }
       
-      // If we got at least a title, return the results
-      if (title) {
+      const cleanTitle = cleanField(title, url);
+      const cleanDescription = cleanField(description, url);
+
+      // If we got at least a title, return the results (never use the URL as title)
+      if (cleanTitle) {
         return {
-          title: title || extractTitleFromUrl(url),
-          description: description || '',
+          title: cleanTitle,
+          description: cleanDescription,
           platform,
         };
       }
@@ -215,41 +231,12 @@ async function extractUrlMetadataFallback(
     }
   }
   
-  // If all proxies failed, return basic info with platform detection
+  // If all proxies failed, leave title/description empty — never fill them with the link.
   console.warn('All metadata extraction methods failed, using fallback');
   return {
-    title: extractTitleFromUrl(url),
+    title: '',
     description: '',
     platform,
   };
-}
-
-/**
- * Extracts a readable title from URL
- */
-function extractTitleFromUrl(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    const pathname = urlObj.pathname;
-    
-    // Remove leading/trailing slashes and split
-    const parts = pathname.replace(/^\/|\/$/g, '').split('/').filter(Boolean);
-    
-    // Take the last meaningful part
-    if (parts.length > 0) {
-      const lastPart = parts[parts.length - 1];
-      // Decode URL encoding and replace hyphens/underscores with spaces
-      return decodeURIComponent(lastPart)
-        .replace(/[-_]/g, ' ')
-        .replace(/\.[^.]+$/, '') // Remove file extension
-        .split('?')[0] // Remove query params
-        .trim();
-    }
-    
-    // Fallback to hostname
-    return urlObj.hostname.replace(/^www\./, '');
-  } catch {
-    return url;
-  }
 }
 

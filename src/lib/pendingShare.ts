@@ -22,6 +22,9 @@ export interface PendingShare {
 }
 
 const URL_IN_TEXT_RE = /https?:\/\/[^\s<>"'`]+/gi;
+/** Bare social / short links without a scheme (common in share sheets). */
+const BARE_LINK_RE =
+  /(?:^|[\s<(])((?:www\.)?(?:instagram\.com|facebook\.com|fb\.com|fb\.watch|tiktok\.com|vm\.tiktok\.com|linkedin\.com|lnkd\.in|twitter\.com|x\.com|youtube\.com|youtu\.be|pinterest\.com|pin\.it|reddit\.com|redd\.it)\/[^\s<>"'`]+)/gi;
 
 /** App/share-sheet labels that are not useful post titles. */
 const USELESS_SHARE_LABELS = new Set([
@@ -60,12 +63,57 @@ function sanitizeFoundUrl(raw: string): string | null {
   }
 }
 
-/** Remove http(s) URLs from share text so captions can become title/description. */
-export function stripUrlsFromShareText(value: string): string {
-  return value
-    .replace(URL_IN_TEXT_RE, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function looksLikeLinkOnly(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  if (sanitizeFoundUrl(trimmed)) return true;
+  if (/^www\./i.test(trimmed) && trimmed.includes(".")) return true;
+  // Path-only leftovers like "/reel/123" or "instagram.com/p/abc"
+  if (/^[a-z0-9.-]+\.[a-z]{2,}\//i.test(trimmed)) return true;
+  if (/^\/?(reel|p|posts?|video|share|v|t)\//i.test(trimmed)) return true;
+  return false;
+}
+
+/** Remove http(s) and bare social links from share text so captions can become title/description. */
+export function stripUrlsFromShareText(value: string, knownUrl?: string): string {
+  let next = value.replace(URL_IN_TEXT_RE, " ");
+
+  next = next.replace(BARE_LINK_RE, (match, link: string) => match.replace(link, " "));
+
+  if (knownUrl) {
+    const variants = new Set<string>([knownUrl]);
+    try {
+      const parsed = new URL(knownUrl);
+      variants.add(parsed.href);
+      variants.add(parsed.toString());
+      variants.add(`${parsed.host}${parsed.pathname}`);
+      variants.add(`${parsed.hostname}${parsed.pathname}`);
+      variants.add(`www.${parsed.hostname}${parsed.pathname}`);
+      variants.add(parsed.pathname);
+    } catch {
+      /* ignore */
+    }
+    for (const variant of variants) {
+      if (!variant || variant === "/") continue;
+      next = next.split(variant).join(" ");
+    }
+  }
+
+  next = next.replace(/\s+/g, " ").trim();
+  return looksLikeLinkOnly(next) ? "" : next;
+}
+
+/** Return caption text only — never a URL or link-like leftover. */
+export function textWithoutLinks(
+  value: string | undefined | null,
+  knownUrl?: string,
+): string | undefined {
+  if (!value) return undefined;
+  const cleaned = stripUrlsFromShareText(value, knownUrl);
+  if (!cleaned) return undefined;
+  if (USELESS_SHARE_LABELS.has(cleaned.toLowerCase())) return undefined;
+  if (looksLikeLinkOnly(cleaned)) return undefined;
+  return cleaned;
 }
 
 /** Pull the first http(s) URL from a share-sheet payload (Instagram/TikTok often put it in `text`). */
@@ -94,17 +142,10 @@ export function extractUrlFromSharePayload(payload: {
   return tryValue(payload.url) ?? tryValue(payload.text) ?? tryValue(payload.title);
 }
 
-function usefulShareText(value: string | undefined | null): string | undefined {
-  if (!value) return undefined;
-  const withoutUrls = stripUrlsFromShareText(value);
-  if (!withoutUrls) return undefined;
-  if (USELESS_SHARE_LABELS.has(withoutUrls.toLowerCase())) return undefined;
-  return withoutUrls;
-}
-
 /**
  * Build title/description/content from a Web Share Target payload.
  * LinkedIn usually sends a real title; Instagram/TikTok/Facebook often only send caption+URL in `text`.
+ * Never puts the shared link itself into title/description.
  */
 export function deriveShareMetadata(payload: {
   url: string;
@@ -115,20 +156,21 @@ export function deriveShareMetadata(payload: {
 }): Pick<PendingShare, "title" | "description" | "content" | "text"> {
   const text = payload.text?.trim() || undefined;
   const contentParam = payload.content?.trim() || undefined;
-  const titleFromParam = usefulShareText(payload.title);
-  const captionFromText = usefulShareText(text);
-  const captionFromContent = usefulShareText(contentParam);
+  const titleFromParam = textWithoutLinks(payload.title, payload.url);
+  const captionFromText = textWithoutLinks(text, payload.url);
+  const captionFromContent = textWithoutLinks(contentParam, payload.url);
   const caption = captionFromText || captionFromContent;
 
   const title = titleFromParam || (caption ? caption.slice(0, 120) : undefined);
-  const descriptionParam = usefulShareText(payload.description) || payload.description?.trim() || undefined;
+  const descriptionParam = textWithoutLinks(payload.description, payload.url);
   // When apps only send a caption (common for IG/TikTok), use it for both fields.
   const description = descriptionParam || caption || undefined;
 
+  // Keep raw share text for backend metadata only when it has caption beyond the URL.
   const content =
-    contentParam ||
-    (caption ? text || caption : undefined) ||
-    (text && extractUrlFromSharePayload({ url: text }) !== text ? text : undefined);
+    textWithoutLinks(contentParam, payload.url) || textWithoutLinks(text, payload.url)
+      ? contentParam || text
+      : undefined;
 
   return { title, description, content, text };
 }
