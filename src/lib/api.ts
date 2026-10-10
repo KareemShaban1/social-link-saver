@@ -1,6 +1,16 @@
 // API client for Express.js backend
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+/** Ensure API base is absolute. Host-only values become relative and double the domain. */
+export function resolveApiBaseUrl(raw?: string): string {
+  const fallback = 'http://localhost:3001/api';
+  const value = (raw ?? '').trim().replace(/\/+$/, '');
+  if (!value) return fallback;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith('/')) return value;
+  return `https://${value}`;
+}
+
+const API_URL = resolveApiBaseUrl(import.meta.env.VITE_API_URL);
 
 function normalizeLink(link: Record<string, unknown>) {
   const isFavorite = Boolean(link.isFavorite ?? link.is_favorite ?? false);

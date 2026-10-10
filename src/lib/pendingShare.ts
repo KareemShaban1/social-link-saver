@@ -23,6 +23,23 @@ export interface PendingShare {
 
 const URL_IN_TEXT_RE = /https?:\/\/[^\s<>"'`]+/gi;
 
+/** App/share-sheet labels that are not useful post titles. */
+const USELESS_SHARE_LABELS = new Set([
+  "instagram",
+  "facebook",
+  "tiktok",
+  "twitter",
+  "x",
+  "linkedin",
+  "youtube",
+  "pinterest",
+  "reddit",
+  "share",
+  "sent from facebook",
+  "sent from instagram",
+  "sent from tiktok",
+]);
+
 export function isShareableHttpUrl(value: string): boolean {
   try {
     const parsed = new URL(value.trim());
@@ -41,6 +58,14 @@ function sanitizeFoundUrl(raw: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** Remove http(s) URLs from share text so captions can become title/description. */
+export function stripUrlsFromShareText(value: string): string {
+  return value
+    .replace(URL_IN_TEXT_RE, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** Pull the first http(s) URL from a share-sheet payload (Instagram/TikTok often put it in `text`). */
@@ -69,14 +94,43 @@ export function extractUrlFromSharePayload(payload: {
   return tryValue(payload.url) ?? tryValue(payload.text) ?? tryValue(payload.title);
 }
 
-function usefulShareTitle(title: string | undefined, url: string): string | undefined {
-  if (!title) return undefined;
-  const trimmed = title.trim();
-  if (!trimmed) return undefined;
-  if (sanitizeFoundUrl(trimmed) === url || extractUrlFromSharePayload({ url: trimmed })) {
-    return undefined;
-  }
-  return trimmed;
+function usefulShareText(value: string | undefined | null): string | undefined {
+  if (!value) return undefined;
+  const withoutUrls = stripUrlsFromShareText(value);
+  if (!withoutUrls) return undefined;
+  if (USELESS_SHARE_LABELS.has(withoutUrls.toLowerCase())) return undefined;
+  return withoutUrls;
+}
+
+/**
+ * Build title/description/content from a Web Share Target payload.
+ * LinkedIn usually sends a real title; Instagram/TikTok/Facebook often only send caption+URL in `text`.
+ */
+export function deriveShareMetadata(payload: {
+  url: string;
+  title?: string | null;
+  text?: string | null;
+  description?: string | null;
+  content?: string | null;
+}): Pick<PendingShare, "title" | "description" | "content" | "text"> {
+  const text = payload.text?.trim() || undefined;
+  const contentParam = payload.content?.trim() || undefined;
+  const titleFromParam = usefulShareText(payload.title);
+  const captionFromText = usefulShareText(text);
+  const captionFromContent = usefulShareText(contentParam);
+  const caption = captionFromText || captionFromContent;
+
+  const title = titleFromParam || (caption ? caption.slice(0, 120) : undefined);
+  const descriptionParam = usefulShareText(payload.description) || payload.description?.trim() || undefined;
+  // When apps only send a caption (common for IG/TikTok), use it for both fields.
+  const description = descriptionParam || caption || undefined;
+
+  const content =
+    contentParam ||
+    (caption ? text || caption : undefined) ||
+    (text && extractUrlFromSharePayload({ url: text }) !== text ? text : undefined);
+
+  return { title, description, content, text };
 }
 
 export function captureShareFromSearchParams(
@@ -105,20 +159,17 @@ export function captureShareFromSearchParams(
 
   if (!url) return null;
 
-  const title = usefulShareTitle(params.get("title") || undefined, url);
-  const description = params.get("description")?.trim() || undefined;
-  const text = params.get("text")?.trim() || undefined;
-  const contentParam = params.get("content")?.trim() || undefined;
-  const content =
-    contentParam ||
-    (text && extractUrlFromSharePayload({ url: text }) !== text ? text : undefined);
+  const derived = deriveShareMetadata({
+    url,
+    title: params.get("title"),
+    text: params.get("text"),
+    description: params.get("description"),
+    content: params.get("content"),
+  });
 
   return {
     url,
-    title,
-    text,
-    description,
-    content,
+    ...derived,
     platform: params.get("platform")?.trim() || undefined,
     categoryId: params.get("categoryId")?.trim() || undefined,
     categoryName: params.get("categoryName")?.trim() || undefined,

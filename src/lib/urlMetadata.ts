@@ -1,3 +1,6 @@
+import { resolveApiBaseUrl } from '@/lib/api';
+import { stripUrlsFromShareText } from '@/lib/pendingShare';
+
 /**
  * Detects platform from URL domain
  */
@@ -45,6 +48,20 @@ export function detectPlatformFromUrl(url: string): string {
  * Extracts metadata from a URL using AI backend service
  * Falls back to client-side extraction if backend is unavailable
  */
+function metadataFromShareContent(
+  url: string,
+  platform: string,
+  providedContent?: string
+): { title: string; description: string; platform: string } | null {
+  const caption = providedContent ? stripUrlsFromShareText(providedContent) : '';
+  if (!caption) return null;
+  return {
+    title: caption.slice(0, 120),
+    description: caption.slice(0, 500),
+    platform,
+  };
+}
+
 export async function extractUrlMetadata(
   url: string,
   providedContent?: string
@@ -54,10 +71,11 @@ export async function extractUrlMetadata(
   platform: string;
 }> {
   const platform = detectPlatformFromUrl(url);
+  const shareFallback = metadataFromShareContent(url, platform, providedContent);
   
   // Try backend AI service first
   try {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    const API_URL = resolveApiBaseUrl(import.meta.env.VITE_API_URL);
     const response = await fetch(`${API_URL}/metadata/extract`, {
       method: 'POST',
       headers: {
@@ -68,10 +86,11 @@ export async function extractUrlMetadata(
 
     if (response.ok) {
       const data = await response.json();
-      if (data.title && data.description) {
+      // Accept title-only responses — FB/IG/TikTok often yield empty descriptions when scraped.
+      if (data.title?.trim()) {
         return {
-          title: data.title,
-          description: data.description,
+          title: data.title.trim(),
+          description: (data.description || shareFallback?.description || '').trim(),
           platform: data.platform || platform,
         };
       }
@@ -79,6 +98,10 @@ export async function extractUrlMetadata(
   } catch (error) {
     console.warn('Backend AI metadata extraction failed, falling back to client-side:', error);
     // Continue to fallback method
+  }
+
+  if (shareFallback) {
+    return shareFallback;
   }
   
   // Fallback: Try client-side extraction with CORS proxies

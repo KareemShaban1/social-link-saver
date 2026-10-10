@@ -4,6 +4,30 @@ interface MetadataResult {
 	platform: string;
 }
 
+interface HtmlMeta {
+	title: string;
+	description: string;
+}
+
+const URL_IN_TEXT_RE = /https?:\/\/[^\s<>"'`]+/gi;
+
+const USELESS_TITLES = new Set([
+	"instagram",
+	"facebook",
+	"tiktok",
+	"twitter",
+	"x",
+	"linkedin",
+	"youtube",
+	"pinterest",
+	"reddit",
+	"log in",
+	"login",
+	"sign up",
+	"facebook – log in or sign up",
+	"instagram • login",
+]);
+
 /**
  * Detects platform from URL domain
  */
@@ -44,6 +68,18 @@ export function detectPlatformFromUrl(url: string): string {
 	}
 }
 
+function stripUrls(value: string): string {
+	return value.replace(URL_IN_TEXT_RE, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function isUsefulText(value: string | undefined | null): value is string {
+	if (!value) return false;
+	const trimmed = value.trim();
+	if (!trimmed) return false;
+	if (USELESS_TITLES.has(trimmed.toLowerCase())) return false;
+	return true;
+}
+
 /**
  * Fetches HTML content from a URL using server-side fetch
  */
@@ -51,12 +87,16 @@ async function fetchPageContent(url: string): Promise<string> {
 	try {
 		const response = await fetch(url, {
 			headers: {
-				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-				'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+				'User-Agent':
+					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+				Accept:
+					'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
 				'Accept-Language': 'en-US,en;q=0.9',
+				'Cache-Control': 'no-cache',
+				'Upgrade-Insecure-Requests': '1',
 			},
-			// Add timeout
-			signal: AbortSignal.timeout(10000), // 10 seconds
+			redirect: 'follow',
+			signal: AbortSignal.timeout(10000),
 		});
 
 		if (!response.ok) {
@@ -70,15 +110,73 @@ async function fetchPageContent(url: string): Promise<string> {
 	}
 }
 
+function metaContent(html: string, ...patterns: RegExp[]): string {
+	for (const pattern of patterns) {
+		const match = html.match(pattern);
+		const value = match?.[1]?.trim();
+		if (value) {
+			return decodeBasicEntities(value);
+		}
+	}
+	return '';
+}
+
+function decodeBasicEntities(value: string): string {
+	return value
+		.replace(/&amp;/g, '&')
+		.replace(/&quot;/g, '"')
+		.replace(/&#39;/g, "'")
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&nbsp;/g, ' ')
+		.trim();
+}
+
+/**
+ * Prefer Open Graph / Twitter card tags — critical for social platforms that hide body content.
+ */
+function extractMetaFromHTML(html: string): HtmlMeta {
+	const ogTitle = metaContent(
+		html,
+		/property=["']og:title["'][^>]*content=["']([^"']+)["']/i,
+		/content=["']([^"']+)["'][^>]*property=["']og:title["']/i,
+	);
+	const twitterTitle = metaContent(
+		html,
+		/name=["']twitter:title["'][^>]*content=["']([^"']+)["']/i,
+		/content=["']([^"']+)["'][^>]*name=["']twitter:title["']/i,
+	);
+	const titleTag = metaContent(html, /<title[^>]*>([\s\S]*?)<\/title>/i);
+
+	const ogDescription = metaContent(
+		html,
+		/property=["']og:description["'][^>]*content=["']([^"']+)["']/i,
+		/content=["']([^"']+)["'][^>]*property=["']og:description["']/i,
+	);
+	const twitterDescription = metaContent(
+		html,
+		/name=["']twitter:description["'][^>]*content=["']([^"']+)["']/i,
+		/content=["']([^"']+)["'][^>]*name=["']twitter:description["']/i,
+	);
+	const metaDescription = metaContent(
+		html,
+		/name=["']description["'][^>]*content=["']([^"']+)["']/i,
+		/content=["']([^"']+)["'][^>]*name=["']description["']/i,
+	);
+
+	return {
+		title: ogTitle || twitterTitle || titleTag,
+		description: ogDescription || twitterDescription || metaDescription,
+	};
+}
+
 /**
  * Extracts text content from HTML
  */
 function extractTextFromHTML(html: string): string {
-	// Remove script and style tags
 	html = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
 	html = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
 
-	// Try to find main content areas
 	const mainContentSelectors = [
 		'article',
 		'main',
@@ -92,19 +190,17 @@ function extractTextFromHTML(html: string): string {
 	let text = '';
 	for (const selector of mainContentSelectors) {
 		try {
-			// Simple regex-based extraction (we can't use DOMParser in Node.js easily)
 			const regex = new RegExp(`<${selector}[^>]*>([\\s\\S]*?)<\\/${selector}>`, 'i');
 			const match = html.match(regex);
 			if (match && match[1]) {
 				text = match[1];
 				break;
 			}
-		} catch (e) {
+		} catch {
 			// Continue to next selector
 		}
 	}
 
-	// If no main content found, use entire body
 	if (!text) {
 		const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
 		if (bodyMatch) {
@@ -114,16 +210,15 @@ function extractTextFromHTML(html: string): string {
 		}
 	}
 
-	// Remove HTML tags and decode entities
 	text = text
-		.replace(/<[^>]+>/g, ' ') // Remove HTML tags
+		.replace(/<[^>]+>/g, ' ')
 		.replace(/&nbsp;/g, ' ')
 		.replace(/&amp;/g, '&')
 		.replace(/&lt;/g, '<')
 		.replace(/&gt;/g, '>')
 		.replace(/&quot;/g, '"')
 		.replace(/&#39;/g, "'")
-		.replace(/\s+/g, ' ') // Normalize whitespace
+		.replace(/\s+/g, ' ')
 		.trim();
 
 	return text;
@@ -135,7 +230,6 @@ function extractTextFromHTML(html: string): string {
 function extractTitleFromContent(content: string): string {
 	if (!content) return '';
 
-	// Take first sentence or first 100 chars
 	const firstSentence = content.split(/[.!?]\s/)[0];
 	const title = firstSentence.length > 100
 		? firstSentence.substring(0, 97) + '...'
@@ -146,32 +240,41 @@ function extractTitleFromContent(content: string): string {
 
 /**
  * Extracts metadata from a URL (title, description, platform) using page fetch and simple parsing.
- * No paid APIs required.
+ * Uses share-sheet text when social platforms block scrapers (common for IG/FB/TikTok).
  */
 export async function extractMetadataWithAI(
 	url: string,
 	providedContent?: string
 ): Promise<MetadataResult> {
 	const platform = detectPlatformFromUrl(url);
+	const shareCaption = providedContent ? stripUrls(providedContent) : '';
 
-	let content = providedContent || '';
+	let htmlMeta: HtmlMeta = { title: '', description: '' };
+	let pageText = '';
 
-	if (!content) {
-		try {
-			const html = await fetchPageContent(url);
-			content = extractTextFromHTML(html);
-		} catch (error) {
-			console.error('Failed to fetch page content:', error);
-		}
+	try {
+		const html = await fetchPageContent(url);
+		htmlMeta = extractMetaFromHTML(html);
+		pageText = extractTextFromHTML(html);
+	} catch (error) {
+		console.error('Failed to fetch page content:', error);
 	}
 
-	const title = content
-		? extractTitleFromContent(content)
-		: extractTitleFromUrl(url);
+	const title =
+		(isUsefulText(htmlMeta.title) && htmlMeta.title) ||
+		(isUsefulText(shareCaption) && extractTitleFromContent(shareCaption)) ||
+		(isUsefulText(pageText) && extractTitleFromContent(pageText)) ||
+		extractTitleFromUrl(url);
+
+	const description =
+		(isUsefulText(htmlMeta.description) && htmlMeta.description.slice(0, 500)) ||
+		(isUsefulText(shareCaption) && shareCaption.slice(0, 500)) ||
+		(isUsefulText(pageText) && pageText.slice(0, 500)) ||
+		'';
 
 	return {
 		title,
-		description: content ? content.substring(0, 500) : '',
+		description,
 		platform,
 	};
 }

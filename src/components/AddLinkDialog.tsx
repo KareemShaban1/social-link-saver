@@ -46,6 +46,7 @@ interface AddLinkDialogProps {
     title?: string;
     url?: string;
     description?: string;
+    content?: string;
     platform?: string;
     categoryId?: string;
     categoryName?: string;
@@ -124,6 +125,8 @@ export const AddLinkDialog = ({
   const platformTouchedRef = useRef(false);
   const lastFetchedUrlRef = useRef("");
   const fetchGenerationRef = useRef(0);
+  const wasOpenRef = useRef(false);
+  const shareContentRef = useRef<string | undefined>(undefined);
 
   const categoriesForSelect = useMemo(() => flattenCategoriesTree(categories), [categories]);
 
@@ -148,8 +151,15 @@ export const AddLinkDialog = ({
     titleTouchedRef.current = false;
     descriptionTouchedRef.current = false;
     platformTouchedRef.current = false;
+    shareContentRef.current = createPrefill.content?.trim() || undefined;
+    // Still fetch when share text exists — page OG tags may improve title/description.
+    // Only skip fetch when we already have both title and description from the share sheet (LinkedIn).
+    const hasShareTitle = Boolean(createPrefill.title?.trim());
+    const hasShareDescription = Boolean(createPrefill.description?.trim());
     lastFetchedUrlRef.current =
-      createPrefill.url && createPrefill.title ? createPrefill.url : "";
+      createPrefill.url && hasShareTitle && hasShareDescription && !shareContentRef.current
+        ? createPrefill.url
+        : "";
 
     setTitle(createPrefill.title ?? "");
     setUrl(createPrefill.url ?? "");
@@ -171,23 +181,30 @@ export const AddLinkDialog = ({
     setSpeechLocale(next);
   };
 
-  // Reset form when dialog closes
+  // Reset form only when transitioning open → closed (not on mount alongside prefill).
   useEffect(() => {
-    if (!open) {
-      stopAllSpeechToText();
-      fetchGenerationRef.current += 1;
-      titleTouchedRef.current = false;
-      descriptionTouchedRef.current = false;
-      platformTouchedRef.current = false;
-      lastFetchedUrlRef.current = "";
-      setTitle("");
-      setUrl("");
-      setDescription("");
-      setPlatform("");
-      setCategoryId("");
-      setCategoryName("");
-      setIsFavorite(false);
+    if (open) {
+      wasOpenRef.current = true;
+      return;
     }
+
+    if (!wasOpenRef.current) return;
+    wasOpenRef.current = false;
+
+    stopAllSpeechToText();
+    fetchGenerationRef.current += 1;
+    titleTouchedRef.current = false;
+    descriptionTouchedRef.current = false;
+    platformTouchedRef.current = false;
+    lastFetchedUrlRef.current = "";
+    shareContentRef.current = undefined;
+    setTitle("");
+    setUrl("");
+    setDescription("");
+    setPlatform("");
+    setCategoryId("");
+    setCategoryName("");
+    setIsFavorite(false);
   }, [open]);
 
   /**
@@ -312,7 +329,7 @@ export const AddLinkDialog = ({
     setFetchingMetadata(true);
 
     try {
-      const metadata = await extractUrlMetadata(urlToFetch);
+      const metadata = await extractUrlMetadata(urlToFetch, shareContentRef.current);
       if (generation !== fetchGenerationRef.current) return;
 
       if (metadata.title && !titleTouchedRef.current) {
@@ -550,18 +567,7 @@ export const AddLinkDialog = ({
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     if (!newOpen) {
-      fetchGenerationRef.current += 1;
-      titleTouchedRef.current = false;
-      descriptionTouchedRef.current = false;
-      platformTouchedRef.current = false;
-      lastFetchedUrlRef.current = "";
-      setTitle("");
-      setUrl("");
-      setDescription("");
-      setPlatform("");
-      setCategoryId("");
-      setCategoryName("");
-      setIsFavorite(false);
+      // Form reset is handled by the open→closed effect; keep edit cleanup here.
       if (isEditMode && onEditComplete) {
         onEditComplete();
       }

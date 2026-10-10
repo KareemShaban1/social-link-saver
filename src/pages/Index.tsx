@@ -235,6 +235,7 @@ const Index = () => {
     title?: string;
     url?: string;
     description?: string;
+    content?: string;
     platform?: string;
     categoryId?: string;
     categoryName?: string;
@@ -301,6 +302,7 @@ const Index = () => {
       url: urlParam,
       title: pending.title,
       description: pending.description,
+      content: pending.content || pending.text,
       platform: pending.platform || detectPlatformFromUrl(urlParam),
       categoryId: pending.categoryId,
       categoryName: pending.categoryName,
