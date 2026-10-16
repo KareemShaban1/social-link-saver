@@ -1,6 +1,6 @@
 import type { Locale } from "@/i18n";
 
-export const SPEECH_LOCALE_STORAGE_KEY = "socialsaver-speech-locale";
+export const SPEECH_LOCALE_STORAGE_KEY = "linknest-speech-locale";
 
 type SpeechRecognitionConstructor = new () => AppSpeechRecognition;
 

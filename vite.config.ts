@@ -22,9 +22,9 @@ export default defineConfig(({ mode }) => ({
       ],
       manifest: {
         // Bump id when forcing clients off a stuck old cache after theme/UI deploys.
-        id: "/socialsaver-pwa-v11",
-        name: "SocialSaver",
-        short_name: "SocialSaver",
+	      id: "/linknest-pwa-v11",
+	      name: "LinkNest",
+	      short_name: "LinkNest",
         description: "Save, organize, and access your social media links.",
         theme_color: "#4F46E5",
         background_color: "#F9FAFB",

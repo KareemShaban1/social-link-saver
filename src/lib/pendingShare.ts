@@ -1,7 +1,7 @@
-export const PENDING_SHARE_STORAGE_KEY = "socialsaver.pendingShare";
+export const PENDING_SHARE_STORAGE_KEY = "linknest.pendingShare";
 
 /** Fired after a share payload is stored (cold URL or launchQueue). */
-export const PENDING_SHARE_READY_EVENT = "socialsaver-pending-share-ready";
+export const PENDING_SHARE_READY_EVENT = "linknest-pending-share-ready";
 
 function normalizePathname(pathname: string): string {
   if (pathname.length > 1 && pathname.endsWith("/")) {

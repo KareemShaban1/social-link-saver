@@ -5,7 +5,7 @@ export type Locale = "en" | "ar";
 
 export const translations = { en, ar } as const;
 
-export const LOCALE_STORAGE_KEY = "socialsaver-locale";
+export const LOCALE_STORAGE_KEY = "linknest-locale";
 
 type NestedKeyOf<T, Prefix extends string = ""> = T extends object
   ? {

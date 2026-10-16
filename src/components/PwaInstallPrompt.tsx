@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const INSTALL_DISMISS_KEY = "socialsaver.pwaInstallDismissed";
+const INSTALL_DISMISS_KEY = "linknest.pwaInstallDismissed";
 
 export function PwaInstallPrompt() {
   const { t } = useLanguage();

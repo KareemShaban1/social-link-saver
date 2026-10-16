@@ -1,6 +1,6 @@
 export const en = {
   common: {
-    brand: "SocialSaver",
+		brand: "LinkNest",
     home: "Home",
     back: "Back",
     backToHome: "Back to home",
@@ -24,7 +24,7 @@ export const en = {
     openMenu: "Open menu",
     closeMenu: "Close menu",
     noCreditCard: "No credit card required",
-    copyright: "© {{year}} SocialSaver. All rights reserved.",
+		copyright: "© {{year}} LinkNest. All rights reserved.",
     language: "Language",
     english: "English",
     arabic: "Arabic",
@@ -56,7 +56,7 @@ export const en = {
       headlineSave: "Save. Organize.",
       headlineAccess: "Access Anytime.",
       subtitle:
-        "SocialSaver lets you save all your social media links in one place. Organize them with custom categories and access them from anywhere, anytime.",
+			  "LinkNest lets you save all your social media links in one place. Organize them with custom categories and access them from anywhere, anytime.",
       check1: "Save unlimited social media links",
       check2: "Organize with custom categories",
       check3: "Access anywhere, anytime",
@@ -76,7 +76,7 @@ export const en = {
       label: "Community",
       title: "Growing together, one link at a time",
       subtitle:
-        "Real numbers from the SocialSaver community — links saved, organized, and accessed every day.",
+		    "Real numbers from the LinkNest community — links saved, organized, and accessed every day.",
       totalLinks: "Links saved",
       totalUsers: "Active users",
       totalCategories: "Categories created",
@@ -131,7 +131,7 @@ export const en = {
     cta: {
       title: "Ready to organize your social media links?",
       subtitle:
-        "Join thousands of users who trust SocialSaver to keep their social links organized and accessible.",
+		    "Join thousands of users who trust LinkNest to keep their social links organized and accessible.",
     },
     footer: {
       tagline: "Save, organize, and access all your social media links in one beautiful place.",
@@ -483,7 +483,7 @@ export const en = {
     updateTitle: "Update available",
     updateDescription: "A new version is ready. Reload to get the latest changes.",
     reload: "Reload",
-    installTitle: "Install SocialSaver",
+	  installTitle: "Install LinkNest",
     installDescription: "Install the app to save links from Instagram, TikTok, Facebook, and more using Share.",
     install: "Install",
   },
@@ -492,24 +492,24 @@ export const en = {
     title: "Save from social apps",
     subtitle: "Share a post from Facebook, Instagram, TikTok, LinkedIn, and more — no copy/paste.",
     androidTitle: "Android (Chrome)",
-    androidStep1: "Install SocialSaver to your home screen (use the install prompt or Chrome menu → Install app).",
+	  androidStep1: "Install LinkNest to your home screen (use the install prompt or Chrome menu → Install app).",
     androidStep2: "Open the post in the social app and tap Share.",
-    androidStep3: "Choose SocialSaver. Review the prefilled link and tap Save.",
-    androidPinTitle: "Show SocialSaver on the first Share row",
+	  androidStep3: "Choose LinkNest. Review the prefilled link and tap Save.",
+	  androidPinTitle: "Show LinkNest on the first Share row",
     androidPinIntro:
-      "Android chooses the top row (you cannot force this from the app). After you share to SocialSaver once, pin it so it stays on the first page.",
-    androidPinStep1: "Share any link to SocialSaver at least once (via More if needed).",
+		  "Android chooses the top row (you cannot force this from the app). After you share to LinkNest once, pin it so it stays on the first page.",
+	  androidPinStep1: "Share any link to LinkNest at least once (via More if needed).",
     androidPinStep2:
-      "Open Share again, find SocialSaver, then long-press its icon → Pin or Add to Favorites (wording varies by phone).",
+		  "Open Share again, find LinkNest, then long-press its icon → Pin or Add to Favorites (wording varies by phone).",
     androidPinStep3:
-      "On Samsung: Share panel → ⋮ or Edit → drag SocialSaver into Favorites. On Pixel/stock Android: long-press the target in the direct-share row.",
-    androidPinNote: "Sharing to SocialSaver more often also moves it up automatically over time.",
+		  "On Samsung: Share panel → ⋮ or Edit → drag LinkNest into Favorites. On Pixel/stock Android: long-press the target in the direct-share row.",
+	  androidPinNote: "Sharing to LinkNest more often also moves it up automatically over time.",
     iosTitle: "iPhone (Shortcuts)",
     iosStep1: "Open the Shortcuts app → New Shortcut.",
     iosStep2: "Add Receive URLs and Text from Share Sheet, then Get URLs from Input.",
     iosStep3: "Add Open URLs and paste the URL below, then append the shared URL from the shortcut variable.",
-    iosStep4: "Turn on Show in Share Sheet, name it Save to SocialSaver, then use Share → your shortcut on any post.",
-    iosHomeScreen: "Tip: Add SocialSaver to your home screen in Safari (Share → Add to Home Screen) for a full-screen experience.",
+	  iosStep4: "Turn on Show in Share Sheet, name it Save to LinkNest, then use Share → your shortcut on any post.",
+	  iosHomeScreen: "Tip: Add LinkNest to your home screen in Safari (Share → Add to Home Screen) for a full-screen experience.",
     shortcutUrlLabel: "Open URLs base (append shared link)",
     shortcutUrlHint: "In Shortcuts, concatenate this text with the URL from Get URLs from Input.",
   },

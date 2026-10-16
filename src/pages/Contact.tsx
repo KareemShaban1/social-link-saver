@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AnimateIn } from "@/components/landing/AnimateIn";
 import { Clock, Mail, MessageSquare } from "lucide-react";
 
-const SUPPORT_EMAIL = "support@socialsaver.com";
+const SUPPORT_EMAIL = "support@linknest.com";
 
 const Contact = () => {
   const { t } = useTranslation();
